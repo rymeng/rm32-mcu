@@ -1,0 +1,13 @@
+# Vivado Platform
+**/.Xil
+**/*.cache
+**/*.hw
+**/*.runs
+**/*.sim
+dfx_runtime.txt
+vivado.jou
+vivado.log
+
+# ARM Cortex M0 Design Start Code
+cortexm0ds_logic.v
+CORTEXM0INTEGRATION.v

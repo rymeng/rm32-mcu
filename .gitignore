@@ -11,3 +11,27 @@ vivado.log
 # ARM Cortex M0 Design Start Code
 cortexm0ds_logic.v
 CORTEXM0INTEGRATION.v
+
+# Editor
+**/.vscode
+
+# Toolchain
+*.axf
+*.bin
+*.d
+*.dep
+*.hex
+*.htm
+*.html
+*.iex
+*.lnp
+*.map
+*.o
+
+# Keil IDE
+*.scvd
+*.uvguix.*
+
+# J-Link
+JLinkLog.txt
+JLinkSettings.ini

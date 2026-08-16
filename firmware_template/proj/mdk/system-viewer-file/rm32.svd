@@ -1,0 +1,417 @@
+<?xml version='1.0' encoding='utf-8'?>
+<device xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="1.1" xs:noNamespaceSchemaLocation="CMSIS-SVD.xsd">
+  <name>rm32</name>
+  <version>1</version>
+  <series>RM32</series>
+  <vendor>Rainer Meng</vendor>
+  <vendorID>Rainer Meng</vendorID>
+  <description>RM32</description>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <size>32</size>
+  <access>read-write</access>
+  <resetValue>0x0</resetValue>
+  <resetMask>0x0</resetMask>
+  <cpu>
+    <name>CM0</name>
+    <revision>r0p0</revision>
+    <endian>little</endian>
+    <nvicPrioBits>4</nvicPrioBits>
+    <vendorSystickConfig>false</vendorSystickConfig>
+    <mpuPresent>true</mpuPresent>
+    <fpuPresent>false</fpuPresent>
+    <fpuDP>false</fpuDP>
+    <icachePresent>false</icachePresent>
+    <dcachePresent>false</dcachePresent>
+    <itcmPresent>false</itcmPresent>
+    <dtcmPresent>false</dtcmPresent>
+  </cpu>
+  <peripherals>
+    <peripheral>
+      <name>UART1</name>
+      <baseAddress>0x40000000</baseAddress>
+      <description>Universal Synchronous Receiver Transmitter 1</description>
+      <groupName>UART</groupName>
+      <headerStructName>UART</headerStructName>
+      <size>0x00000FFF</size>
+      <addressBlock>
+        <usage>registers</usage>
+        <offset>0x0</offset>
+        <size>0x00000FFF</size>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>BRR</name>
+          <addressOffset>0x00000000</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>UART1 Baud Rate Register</description>
+          <fields>
+            <field>
+              <name>OSR</name>
+              <msb>21</msb>
+              <lsb>16</lsb>
+              <access>read-write</access>
+              <description>UART1 BRR OSR [5:0] Bits: Oversampling Rate</description>
+            </field>
+            <field>
+              <name>PSC</name>
+              <msb>15</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>UART1 BRR PSC [15:0] Bits: Prescaler division factor of baud rate generator</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>CR1</name>
+          <addressOffset>0x00000004</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>UART1 Control Register 1</description>
+          <fields>
+            <field>
+              <name>STOPLEN</name>
+              <msb>5</msb>
+              <lsb>5</lsb>
+              <access>read-write</access>
+              <description>UART1 CR1 STOPLEN Bit: Stop bit(s) length</description>
+            </field>
+            <field>
+              <name>PARITYTYPE</name>
+              <msb>4</msb>
+              <lsb>4</lsb>
+              <access>read-write</access>
+              <description>UART1 CR1 PARITYTYPE Bit: Parity type</description>
+            </field>
+            <field>
+              <name>PARITYENA</name>
+              <msb>3</msb>
+              <lsb>3</lsb>
+              <access>read-write</access>
+              <description>UART1 CR1 PARITYENA Bit: Enable / Disable parity bit</description>
+            </field>
+            <field>
+              <name>DATALEN</name>
+              <msb>2</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>UART1 CR1 DATALEN [2:0] Bits: Data bit(s) length</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>CR2</name>
+          <addressOffset>0x00000008</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>UART1 Control Register 2</description>
+          <fields>
+            <field>
+              <name>TXENA</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>UART1 CR2 TXENA Bit: Enable / Disable TX sub-system</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>NICR[%s]</name>
+          <addressOffset>0x00000020</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>UART1 Noise Injection Control Register X</description>
+          <dim>12</dim>
+          <dimIncrement>0x00000004</dimIncrement>
+          <fields>
+            <field>
+              <name>SP31</name>
+              <msb>31</msb>
+              <lsb>31</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP31 Bit: Noise at sampling point 31</description>
+            </field>
+            <field>
+              <name>SP30</name>
+              <msb>30</msb>
+              <lsb>30</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP30 Bit: Noise at sampling point 30</description>
+            </field>
+            <field>
+              <name>SP29</name>
+              <msb>29</msb>
+              <lsb>29</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP29 Bit: Noise at sampling point 29</description>
+            </field>
+            <field>
+              <name>SP28</name>
+              <msb>28</msb>
+              <lsb>28</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP28 Bit: Noise at sampling point 28</description>
+            </field>
+            <field>
+              <name>SP27</name>
+              <msb>27</msb>
+              <lsb>27</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP27 Bit: Noise at sampling point 27</description>
+            </field>
+            <field>
+              <name>SP26</name>
+              <msb>26</msb>
+              <lsb>26</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP26 Bit: Noise at sampling point 26</description>
+            </field>
+            <field>
+              <name>SP25</name>
+              <msb>25</msb>
+              <lsb>25</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP25 Bit: Noise at sampling point 25</description>
+            </field>
+            <field>
+              <name>SP24</name>
+              <msb>24</msb>
+              <lsb>24</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP24 Bit: Noise at sampling point 24</description>
+            </field>
+            <field>
+              <name>SP23</name>
+              <msb>23</msb>
+              <lsb>23</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP23 Bit: Noise at sampling point 23</description>
+            </field>
+            <field>
+              <name>SP22</name>
+              <msb>22</msb>
+              <lsb>22</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP22 Bit: Noise at sampling point 22</description>
+            </field>
+            <field>
+              <name>SP21</name>
+              <msb>21</msb>
+              <lsb>21</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP21 Bit: Noise at sampling point 21</description>
+            </field>
+            <field>
+              <name>SP20</name>
+              <msb>20</msb>
+              <lsb>20</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP20 Bit: Noise at sampling point 20</description>
+            </field>
+            <field>
+              <name>SP19</name>
+              <msb>19</msb>
+              <lsb>19</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP19 Bit: Noise at sampling point 19</description>
+            </field>
+            <field>
+              <name>SP18</name>
+              <msb>18</msb>
+              <lsb>18</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP18 Bit: Noise at sampling point 18</description>
+            </field>
+            <field>
+              <name>SP17</name>
+              <msb>17</msb>
+              <lsb>17</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP17 Bit: Noise at sampling point 17</description>
+            </field>
+            <field>
+              <name>SP16</name>
+              <msb>16</msb>
+              <lsb>16</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP16 Bit: Noise at sampling point 16</description>
+            </field>
+            <field>
+              <name>SP15</name>
+              <msb>15</msb>
+              <lsb>15</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP15 Bit: Noise at sampling point 15</description>
+            </field>
+            <field>
+              <name>SP14</name>
+              <msb>14</msb>
+              <lsb>14</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP14 Bit: Noise at sampling point 14</description>
+            </field>
+            <field>
+              <name>SP13</name>
+              <msb>13</msb>
+              <lsb>13</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP13 Bit: Noise at sampling point 13</description>
+            </field>
+            <field>
+              <name>SP12</name>
+              <msb>12</msb>
+              <lsb>12</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP12 Bit: Noise at sampling point 12</description>
+            </field>
+            <field>
+              <name>SP11</name>
+              <msb>11</msb>
+              <lsb>11</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP11 Bit: Noise at sampling point 11</description>
+            </field>
+            <field>
+              <name>SP10</name>
+              <msb>10</msb>
+              <lsb>10</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP10 Bit: Noise at sampling point 10</description>
+            </field>
+            <field>
+              <name>SP9</name>
+              <msb>9</msb>
+              <lsb>9</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP9 Bit: Noise at sampling point 9</description>
+            </field>
+            <field>
+              <name>SP8</name>
+              <msb>8</msb>
+              <lsb>8</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP8 Bit: Noise at sampling point 8</description>
+            </field>
+            <field>
+              <name>SP7</name>
+              <msb>7</msb>
+              <lsb>7</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP7 Bit: Noise at sampling point 7</description>
+            </field>
+            <field>
+              <name>SP6</name>
+              <msb>6</msb>
+              <lsb>6</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP6 Bit: Noise at sampling point 6</description>
+            </field>
+            <field>
+              <name>SP5</name>
+              <msb>5</msb>
+              <lsb>5</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP5 Bit: Noise at sampling point 5</description>
+            </field>
+            <field>
+              <name>SP4</name>
+              <msb>4</msb>
+              <lsb>4</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP4 Bit: Noise at sampling point 4</description>
+            </field>
+            <field>
+              <name>SP3</name>
+              <msb>3</msb>
+              <lsb>3</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP3 Bit: Noise at sampling point 3</description>
+            </field>
+            <field>
+              <name>SP2</name>
+              <msb>2</msb>
+              <lsb>2</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP2 Bit: Noise at sampling point 2</description>
+            </field>
+            <field>
+              <name>SP1</name>
+              <msb>1</msb>
+              <lsb>1</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP1 Bit: Noise at sampling point 1</description>
+            </field>
+            <field>
+              <name>SP0</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>UART1 NICR[%s] SP0 Bit: Noise at sampling point 0</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>TDR</name>
+          <addressOffset>0x00000060</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>UART1 TX Data Register</description>
+          <fields>
+            <field>
+              <name>NI</name>
+              <msb>11</msb>
+              <lsb>11</lsb>
+              <access>read-write</access>
+              <description>UART1 TDR NI Bit: Inject noise</description>
+            </field>
+            <field>
+              <name>STOP2FEI</name>
+              <msb>10</msb>
+              <lsb>10</lsb>
+              <access>read-write</access>
+              <description>UART1 TDR STOP2FEI Bit: Inject frame error at stop bit 2</description>
+            </field>
+            <field>
+              <name>STOP1FEI</name>
+              <msb>9</msb>
+              <lsb>9</lsb>
+              <access>read-write</access>
+              <description>UART1 TDR STOP1FEI Bit: Inject frame error at stop bit 1</description>
+            </field>
+            <field>
+              <name>PEI</name>
+              <msb>8</msb>
+              <lsb>8</lsb>
+              <access>read-write</access>
+              <description>UART1 TDR PEI Bit: Inject parity error</description>
+            </field>
+            <field>
+              <name>DATA</name>
+              <msb>7</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>UART1 TDR DATA [7:0] Bits: Data</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>SR1</name>
+          <addressOffset>0x00000080</addressOffset>
+          <size>32</size>
+          <access>read-only</access>
+          <description>UART1 Status Register 1</description>
+          <fields>
+            <field>
+              <name>TXRDY</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-only</access>
+              <description>UART1 SR1 TXRDY Bit: TX data register empty flag</description>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>

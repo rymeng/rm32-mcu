@@ -1,0 +1,14 @@
+PRG 0 PI {
+    PrgCode +0 {
+        *.o (+RO)
+    }
+    PrgData +0 {
+        *.o (+RW,+ZI)
+    }
+}
+
+DSCR +0 {
+    DevDscr +0 {
+        *.o (.descriptor)
+    }
+}

@@ -5,8 +5,8 @@
 **/*.runs
 **/*.sim
 dfx_runtime.txt
-vivado.jou
-vivado.log
+*.jou
+*.log
 
 # ARM Cortex M0 Design Start Code
 cortexm0ds_logic.v

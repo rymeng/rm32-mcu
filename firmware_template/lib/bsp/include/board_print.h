@@ -9,7 +9,7 @@ extern "C" {
 #include "rm32.h"
 
 extern void board_print_serial_port_init(
-    uint32_t pclk_rate_hz, uint32_t baud_rate);
+    uint32_t hclk_rate_hz, uint32_t baud_rate);
 
 #ifdef __cplusplus
 }

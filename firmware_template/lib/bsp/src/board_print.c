@@ -1,12 +1,15 @@
 #include "board_print.h"
 
-void board_print_serial_port_init(uint32_t pclk_rate_hz, uint32_t baud_rate)
+void board_print_serial_port_init(uint32_t hclk_rate_hz, uint32_t baud_rate)
 {
+    GPIOA->AFR1.bit.PIN0 = 0x1UL;
+    __DSB();
+
     UART1->CR2.bit.TXENA = 0x0UL;
     __DSB();
 
-    UART1->BRR.bit.OSR = 0x7UL;
-    UART1->BRR.bit.PSC = pclk_rate_hz / 8UL / baud_rate;
+    UART1->BRR.bit.OSR = 0x8UL;
+    UART1->BRR.bit.PSC = hclk_rate_hz / 8UL / baud_rate;
     UART1->CR1.bit.DATALEN = 0x7UL;
     UART1->CR1.bit.PARITYENA = 0x0UL;
     UART1->CR1.bit.STOPLEN = 0x0UL;

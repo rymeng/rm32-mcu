@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module uart_core_tx (
+module tuart_core_tx (
 /* Clock & Reset */
     input  wire         clock_i,
     input  wire         reset_n_i,
@@ -46,15 +46,17 @@ module uart_core_tx (
     end
 
     /* Generate tick */
-    wire bit_tick;
-    wire sampling_tick;
-    uart_baud_generator uart_baud_generator_inst (
-        .clock_i             (clock_i),
-        .reset_n_i           (reset_n_i),
-        .oversampling_rate_i (oversampling_rate),
-        .baud_divisor_i      (baud_divisor),
-        .sampling_tick_o     (sampling_tick),
-        .bit_tick_o          (bit_tick)
+    wire        sampling_tick;
+    wire [5: 0] oversampling_rate_calib;
+    tuart_baud_generator uart_baud_generator_inst (
+        .clk_i                     (clock_i),
+        .rst_n_i                   (reset_n_i),
+        .oversampling_rate_i       (oversampling_rate),
+        .baud_divisor_i            (baud_divisor),
+        .oversampling_rate_calib_o (oversampling_rate_calib),
+        .baud_divisor_calib_o      (),
+        .sampling_tick_o           (sampling_tick),
+        .bit_tick_o                ()
     );
 
     /* Lock communication parameters */
@@ -285,7 +287,7 @@ module uart_core_tx (
                     if (sampling_tick) begin
                         /* Refresh bus output */
                         txd_o                    <= shift_register[sampling_point_count];
-                        if (sampling_point_count == oversampling_rate - 1) begin
+                        if (sampling_point_count == oversampling_rate_calib - 1) begin
                             /* Reset sampling point counter */
                             sampling_point_count <= 5'b0;
                             /* Change FSM state */
@@ -303,7 +305,7 @@ module uart_core_tx (
                     if (sampling_tick) begin
                         /* Refresh bus output */
                         txd_o                      <= shift_register[((1 + data_bit_count) << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate - 1) begin
+                        if (sampling_point_count == oversampling_rate_calib - 1) begin
                             /* Reset sampling point counter */
                             sampling_point_count   <= 5'b0;
                             if (data_bit_count == data_length) begin
@@ -330,7 +332,7 @@ module uart_core_tx (
                     if (sampling_tick) begin
                         /* Refresh bus output */
                         txd_o                    <= shift_register[(9 << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate - 1) begin
+                        if (sampling_point_count == oversampling_rate_calib - 1) begin
                             /* Reset sampling point counter */
                             sampling_point_count <= 5'b0;
                             /* Change FSM state */
@@ -348,7 +350,7 @@ module uart_core_tx (
                     if (sampling_tick) begin
                         /* Refresh bus output */
                         txd_o                           <= shift_register[((10 + stop_bit_count) << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate - 1) begin
+                        if (sampling_point_count == oversampling_rate_calib - 1) begin
                             /* Reset sampling point counter */
                             sampling_point_count        <= 5'b0;
                             if (stop_bit_count == stop_length) begin
@@ -389,5 +391,4 @@ module uart_core_tx (
 
     /* Output SR1 data register empty flag*/
     assign tx_data_register_empty_o = ~data_register_valid;
-
 endmodule

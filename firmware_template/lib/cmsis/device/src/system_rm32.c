@@ -9,9 +9,9 @@ extern __ALIAS("cpu_rate_hz") volatile uint32_t SystemCoreClock;
 
 void recalc_global_clock_rates(void)
 {
-    cpu_rate_hz = HSI_RATE_HZ / 4UL;
-    cpu_systick_rate_hz = HSI_RATE_HZ / 4UL;
-    hclk_rate_hz = HSI_RATE_HZ / 4UL;
+    cpu_rate_hz = HSI_RATE_HZ;
+    cpu_systick_rate_hz = HSI_RATE_HZ;
+    hclk_rate_hz = HSI_RATE_HZ;
 
     return;
 }

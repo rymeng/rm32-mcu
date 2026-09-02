@@ -4,6 +4,7 @@
 **/*.hw
 **/*.runs
 **/*.sim
+*.dcp
 dfx_runtime.txt
 *.jou
 *.log
@@ -20,6 +21,7 @@ CORTEXM0INTEGRATION.v
 *.bin
 *.d
 *.dep
+*.FLM
 *.hex
 *.htm
 *.html

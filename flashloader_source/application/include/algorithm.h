@@ -8,43 +8,27 @@ extern "C" {
 #include <stdint.h>
 #include "rm32.h"
 
-#define ERASE_SIZE                        (4UL)
-#define PROGRAM_SIZE                      (4UL)
-#define PROGRAM_CHUNK_SIZE                (PROGRAM_SIZE * 128UL)
+#define ERASE_SIZE                                (400UL)
+#define PROGRAM_SIZE                              (4UL)
+#define PROGRAM_CHUNK_SIZE                        (PROGRAM_SIZE * 128UL)
 
-#define ERASE_TIMEOUT                     (5000UL)
-#define PROGRAM_TIMEOUT                   (5000UL)
+#define ERASE_TIMEOUT                             (5000UL)
+#define PROGRAM_TIMEOUT                           (5000UL)
 
-#define OCSRAM1_BASE_ADDR                 (0x00000000UL)
-#define OCSRAM1_SIZE                      (0x00002000UL)
+#define FLASH_MAIN_BANK_BASE_ADDR                 (0x00000000UL)
+#define FLASH_MAIN_BANK_SIZE                      (0x00010000UL)
 
-#define OCSRAM2_BASE_ADDR                 (0x20000000UL)
-#define OCSRAM2_SIZE                      (0x00002000UL)
-
-#define OCSRAM1_END_ADDR                  (    \
-    OCSRAM1_BASE_ADDR +                        \
-    OCSRAM1_SIZE -                             \
+#define FLASH_MAIN_BANK_END_ADDR                  (    \
+    FLASH_MAIN_BANK_BASE_ADDR +                        \
+    FLASH_MAIN_BANK_SIZE -                             \
     0x1UL)
-#define OCSRAM1_LAST_ERASE_UNIT_ADDR      (    \
-    OCSRAM1_BASE_ADDR +                        \
-    OCSRAM1_SIZE -                             \
+#define FLASH_MAIN_BANK_LAST_ERASE_UNIT_ADDR      (    \
+    FLASH_MAIN_BANK_BASE_ADDR +                        \
+    FLASH_MAIN_BANK_SIZE -                             \
     ERASE_SIZE)
-#define OCSRAM1_LAST_PROGRAM_UNIT_ADDR    (    \
-    OCSRAM1_BASE_ADDR +                        \
-    OCSRAM1_SIZE -                             \
-    PROGRAM_SIZE)
-
-#define OCSRAM2_END_ADDR                  (    \
-    OCSRAM2_BASE_ADDR +                        \
-    OCSRAM2_SIZE -                             \
-    0x1UL)
-#define OCSRAM2_LAST_ERASE_UNIT_ADDR      (    \
-    OCSRAM2_BASE_ADDR +                        \
-    OCSRAM2_SIZE -                             \
-    ERASE_SIZE)
-#define OCSRAM2_LAST_PROGRAM_UNIT_ADDR    (    \
-    OCSRAM2_BASE_ADDR +                        \
-    OCSRAM2_SIZE -                             \
+#define FLASH_MAIN_BANK_LAST_PROGRAM_UNIT_ADDR    (    \
+    FLASH_MAIN_BANK_BASE_ADDR +                        \
+    FLASH_MAIN_BANK_SIZE -                             \
     PROGRAM_SIZE)
 
 extern uint32_t __mem_region_init(uint32_t address, uint32_t function);

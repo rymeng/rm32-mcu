@@ -37,7 +37,7 @@ module bram_top #(
     /* Write logic: generate write_valid signal */
     reg write_valid;
 
-    always @(posedge hclk_i or negedge hreset_n_i) begin
+    always @(posedge hclk_i) begin
         if (!hreset_n_i) begin
             write_valid <= 1'b0;
         end else begin
@@ -49,7 +49,7 @@ module bram_top #(
     reg [(ADDR_WIDTH + 1): 2] write_mem_index;
     reg                [4: 0] write_valid_data_mask;
 
-    always @(posedge hclk_i or negedge hreset_n_i) begin
+    always @(posedge hclk_i) begin
         if (!hreset_n_i) begin
             write_mem_index       <= {ADDR_WIDTH{1'b0}};
             write_valid_data_mask <= 4'b0000;
@@ -135,18 +135,5 @@ module bram_top #(
 
     /* hresp_o: always no error response */
     assign hresp_o = 2'b00;
-
-    /* haddr_i / htrans_i / hburst_i / hprot_i / hmastlock_i: Add dummy load */
-    (* DONT_TOUCH = "true" *) wire [31: 0] haddr_i_dummy_load;
-    (* DONT_TOUCH = "true" *) wire [31: 0] htrans_i_dummy_load;
-    (* DONT_TOUCH = "true" *) wire  [2: 0] hburst_i_dummy_load;
-    (* DONT_TOUCH = "true" *) wire  [3: 0] hprot_i_dummy_load;
-    (* DONT_TOUCH = "true" *) wire         hmastlock_i_dummy_load;
-
-    assign haddr_i_dummy_load = haddr_i;
-    assign htrans_i_dummy_load = htrans_i;
-    assign hburst_i_dummy_load = hburst_i;
-    assign hprot_i_dummy_load = hprot_i;
-    assign hmastlock_i_dummy_load = hmastlock_i;
 
 endmodule

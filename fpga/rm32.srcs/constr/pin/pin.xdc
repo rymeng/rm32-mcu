@@ -1,3 +1,6 @@
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
+
 set_property PACKAGE_PIN Y18 [get_ports xclk_i]
 set_property IOSTANDARD LVCMOS33 [get_ports xclk_i]
 

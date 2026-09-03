@@ -542,19 +542,6 @@ module tuart_top (
     /* hresp: always no error response */
     assign hresp_o     = 2'b00;
 
-    /* haddr / htrans / hburst / hprot / hmastlock: Add dummy load */
-    (* DONT_TOUCH = "true" *) wire [31: 0] haddr_dummy_load;
-    (* DONT_TOUCH = "true" *) wire [31: 0] htrans_dummy_load;
-    (* DONT_TOUCH = "true" *) wire  [2: 0] hburst_dummy_load;
-    (* DONT_TOUCH = "true" *) wire  [3: 0] hprot_dummy_load;
-    (* DONT_TOUCH = "true" *) wire         hmastlock_dummy_load;
-
-    assign haddr_dummy_load     = haddr_i;
-    assign htrans_dummy_load    = htrans_i;
-    assign hburst_dummy_load    = hburst_i;
-    assign hprot_dummy_load     = hprot_i;
-    assign hmastlock_dummy_load = hmastlock_i;
-
     /* TX sub-system */
     wire          txrdy;
     reg  [255: 0] nicr9_2;
@@ -596,9 +583,9 @@ module tuart_top (
     end
 
     /* RX subsystem */
-    (* DONT_TOUCH = "true" *) wire [31: 0] rxd_dummy_load;
+//    (* DONT_TOUCH = "true" *) wire [31: 0] rxd_dummy_load;
 
-    assign rxd_dummy_load = rxd_i;
+//    assign rxd_dummy_load = rxd_i;
 
     /* IO controller subsystem */
     assign swap_o = 1'b0;

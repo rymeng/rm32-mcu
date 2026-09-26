@@ -2,231 +2,230 @@
 
 module bus_matrix_top (
 /* AHB-Lite master device signal */
-    input  wire         hclk_master_i,
-    input  wire         hreset_master_n_i,
-    input  wire [31: 0] haddr_master_i,
-    input  wire [31: 0] hwdata_master_i,
-    input  wire         hwrite_master_i,
-    input  wire  [1: 0] htrans_master_i,
-    input  wire  [2: 0] hsize_master_i,
-    input  wire  [2: 0] hburst_master_i,
-    input  wire  [3: 0] hprot_master_i,
-    input  wire         hmastlock_master_i,
-    output reg  [31: 0] hrdata_master_o,
-    output reg          hready_master_o,
-    output reg          hresp_master_o,
+    input  wire        hclk_master_i,
+    input  wire        hreset_master_n_i,
+    input  wire [31:0] haddr_master_i,
+    input  wire [31:0] hwdata_master_i,
+    input  wire        hwrite_master_i,
+    input  wire  [1:0] htrans_master_i,
+    input  wire  [2:0] hsize_master_i,
+    input  wire  [2:0] hburst_master_i,
+    input  wire  [3:0] hprot_master_i,
+    input  wire        hmastlock_master_i,
+    output reg  [31:0] hrdata_master_o,
+    output reg         hready_master_o,
+    output reg         hresp_master_o,
 /* AHB slave device 00 (RCC) signal */
-    output wire         hsel_slave00_o,
-    output wire [31: 0] haddr_slave00_o,
-    output wire [31: 0] hwdata_slave00_o,
-    output wire         hwrite_slave00_o,
-    output wire  [1: 0] htrans_slave00_o,
-    output wire  [2: 0] hsize_slave00_o,
-    output wire         hready_slave00_o,
-    output wire  [2: 0] hburst_slave00_o,
-    output wire  [3: 0] hprot_slave00_o,
-    output wire         hmastlock_slave00_o,
-    input  wire [31: 0] hrdata_slave00_i,
-    input  wire         hreadyout_slave00_i,
-    input  wire         hresp_slave00_i,
+    output wire        hsel_slave00_o,
+    output wire [31:0] haddr_slave00_o,
+    output wire [31:0] hwdata_slave00_o,
+    output wire        hwrite_slave00_o,
+    output wire  [1:0] htrans_slave00_o,
+    output wire  [2:0] hsize_slave00_o,
+    output wire        hready_slave00_o,
+    output wire  [2:0] hburst_slave00_o,
+    output wire  [3:0] hprot_slave00_o,
+    output wire        hmastlock_slave00_o,
+    input  wire [31:0] hrdata_slave00_i,
+    input  wire        hreadyout_slave00_i,
+    input  wire        hresp_slave00_i,
 /* AHB slave device 01 (Flash Main Bank Model Block 1) signal */
-    output wire         hsel_slave01_o,
-    output wire [31: 0] haddr_slave01_o,
-    output wire [31: 0] hwdata_slave01_o,
-    output wire         hwrite_slave01_o,
-    output wire  [1: 0] htrans_slave01_o,
-    output wire  [2: 0] hsize_slave01_o,
-    output wire         hready_slave01_o,
-    output wire  [2: 0] hburst_slave01_o,
-    output wire  [3: 0] hprot_slave01_o,
-    output wire         hmastlock_slave01_o,
-    input  wire [31: 0] hrdata_slave01_i,
-    input  wire         hreadyout_slave01_i,
-    input  wire         hresp_slave01_i,
+    output wire        hsel_slave01_o,
+    output wire [31:0] haddr_slave01_o,
+    output wire [31:0] hwdata_slave01_o,
+    output wire        hwrite_slave01_o,
+    output wire  [1:0] htrans_slave01_o,
+    output wire  [2:0] hsize_slave01_o,
+    output wire        hready_slave01_o,
+    output wire  [2:0] hburst_slave01_o,
+    output wire  [3:0] hprot_slave01_o,
+    output wire        hmastlock_slave01_o,
+    input  wire [31:0] hrdata_slave01_i,
+    input  wire        hreadyout_slave01_i,
+    input  wire        hresp_slave01_i,
 /* AHB slave device 02 (Flash Main Bank Model Block 2) signal */
-    output wire         hsel_slave02_o,
-    output wire [31: 0] haddr_slave02_o,
-    output wire [31: 0] hwdata_slave02_o,
-    output wire         hwrite_slave02_o,
-    output wire  [1: 0] htrans_slave02_o,
-    output wire  [2: 0] hsize_slave02_o,
-    output wire         hready_slave02_o,
-    output wire  [2: 0] hburst_slave02_o,
-    output wire  [3: 0] hprot_slave02_o,
-    output wire         hmastlock_slave02_o,
-    input  wire [31: 0] hrdata_slave02_i,
-    input  wire         hreadyout_slave02_i,
-    input  wire         hresp_slave02_i,
+    output wire        hsel_slave02_o,
+    output wire [31:0] haddr_slave02_o,
+    output wire [31:0] hwdata_slave02_o,
+    output wire        hwrite_slave02_o,
+    output wire  [1:0] htrans_slave02_o,
+    output wire  [2:0] hsize_slave02_o,
+    output wire        hready_slave02_o,
+    output wire  [2:0] hburst_slave02_o,
+    output wire  [3:0] hprot_slave02_o,
+    output wire        hmastlock_slave02_o,
+    input  wire [31:0] hrdata_slave02_i,
+    input  wire        hreadyout_slave02_i,
+    input  wire        hresp_slave02_i,
 /* AHB slave device 03 (Flash Main Bank Model Block 3) signal */
-    output wire         hsel_slave03_o,
-    output wire [31: 0] haddr_slave03_o,
-    output wire [31: 0] hwdata_slave03_o,
-    output wire         hwrite_slave03_o,
-    output wire  [1: 0] htrans_slave03_o,
-    output wire  [2: 0] hsize_slave03_o,
-    output wire         hready_slave03_o,
-    output wire  [2: 0] hburst_slave03_o,
-    output wire  [3: 0] hprot_slave03_o,
-    output wire         hmastlock_slave03_o,
-    input  wire [31: 0] hrdata_slave03_i,
-    input  wire         hreadyout_slave03_i,
-    input  wire         hresp_slave03_i,
+    output wire        hsel_slave03_o,
+    output wire [31:0] haddr_slave03_o,
+    output wire [31:0] hwdata_slave03_o,
+    output wire        hwrite_slave03_o,
+    output wire  [1:0] htrans_slave03_o,
+    output wire  [2:0] hsize_slave03_o,
+    output wire        hready_slave03_o,
+    output wire  [2:0] hburst_slave03_o,
+    output wire  [3:0] hprot_slave03_o,
+    output wire        hmastlock_slave03_o,
+    input  wire [31:0] hrdata_slave03_i,
+    input  wire        hreadyout_slave03_i,
+    input  wire        hresp_slave03_i,
 /* AHB slave device 04 (Flash Main Bank Model Block 4) signal */
-    output wire         hsel_slave04_o,
-    output wire [31: 0] haddr_slave04_o,
-    output wire [31: 0] hwdata_slave04_o,
-    output wire         hwrite_slave04_o,
-    output wire  [1: 0] htrans_slave04_o,
-    output wire  [2: 0] hsize_slave04_o,
-    output wire         hready_slave04_o,
-    output wire  [2: 0] hburst_slave04_o,
-    output wire  [3: 0] hprot_slave04_o,
-    output wire         hmastlock_slave04_o,
-    input  wire [31: 0] hrdata_slave04_i,
-    input  wire         hreadyout_slave04_i,
-    input  wire         hresp_slave04_i,
+    output wire        hsel_slave04_o,
+    output wire [31:0] haddr_slave04_o,
+    output wire [31:0] hwdata_slave04_o,
+    output wire        hwrite_slave04_o,
+    output wire  [1:0] htrans_slave04_o,
+    output wire  [2:0] hsize_slave04_o,
+    output wire        hready_slave04_o,
+    output wire  [2:0] hburst_slave04_o,
+    output wire  [3:0] hprot_slave04_o,
+    output wire        hmastlock_slave04_o,
+    input  wire [31:0] hrdata_slave04_i,
+    input  wire        hreadyout_slave04_i,
+    input  wire        hresp_slave04_i,
 /* AHB slave device 05 (Flash Option Byte Bank Model) signal */
-    output wire         hsel_slave05_o,
-    output wire [31: 0] haddr_slave05_o,
-    output wire [31: 0] hwdata_slave05_o,
-    output wire         hwrite_slave05_o,
-    output wire  [1: 0] htrans_slave05_o,
-    output wire  [2: 0] hsize_slave05_o,
-    output wire         hready_slave05_o,
-    output wire  [2: 0] hburst_slave05_o,
-    output wire  [3: 0] hprot_slave05_o,
-    output wire         hmastlock_slave05_o,
-    input  wire [31: 0] hrdata_slave05_i,
-    input  wire         hreadyout_slave05_i,
-    input  wire         hresp_slave05_i,
+    output wire        hsel_slave05_o,
+    output wire [31:0] haddr_slave05_o,
+    output wire [31:0] hwdata_slave05_o,
+    output wire        hwrite_slave05_o,
+    output wire  [1:0] htrans_slave05_o,
+    output wire  [2:0] hsize_slave05_o,
+    output wire        hready_slave05_o,
+    output wire  [2:0] hburst_slave05_o,
+    output wire  [3:0] hprot_slave05_o,
+    output wire        hmastlock_slave05_o,
+    input  wire [31:0] hrdata_slave05_i,
+    input  wire        hreadyout_slave05_i,
+    input  wire        hresp_slave05_i,
 /* AHB slave device 06 (IRAM 1 Block 1) signal */
-    output wire         hsel_slave06_o,
-    output wire [31: 0] haddr_slave06_o,
-    output wire [31: 0] hwdata_slave06_o,
-    output wire         hwrite_slave06_o,
-    output wire  [1: 0] htrans_slave06_o,
-    output wire  [2: 0] hsize_slave06_o,
-    output wire         hready_slave06_o,
-    output wire  [2: 0] hburst_slave06_o,
-    output wire  [3: 0] hprot_slave06_o,
-    output wire         hmastlock_slave06_o,
-    input  wire [31: 0] hrdata_slave06_i,
-    input  wire         hreadyout_slave06_i,
-    input  wire         hresp_slave06_i,
+    output wire        hsel_slave06_o,
+    output wire [31:0] haddr_slave06_o,
+    output wire [31:0] hwdata_slave06_o,
+    output wire        hwrite_slave06_o,
+    output wire  [1:0] htrans_slave06_o,
+    output wire  [2:0] hsize_slave06_o,
+    output wire        hready_slave06_o,
+    output wire  [2:0] hburst_slave06_o,
+    output wire  [3:0] hprot_slave06_o,
+    output wire        hmastlock_slave06_o,
+    input  wire [31:0] hrdata_slave06_i,
+    input  wire        hreadyout_slave06_i,
+    input  wire        hresp_slave06_i,
 /* AHB slave device 07 (IRAM 1 Block 2) signal */
-    output wire         hsel_slave07_o,
-    output wire [31: 0] haddr_slave07_o,
-    output wire [31: 0] hwdata_slave07_o,
-    output wire         hwrite_slave07_o,
-    output wire  [1: 0] htrans_slave07_o,
-    output wire  [2: 0] hsize_slave07_o,
-    output wire         hready_slave07_o,
-    output wire  [2: 0] hburst_slave07_o,
-    output wire  [3: 0] hprot_slave07_o,
-    output wire         hmastlock_slave07_o,
-    input  wire [31: 0] hrdata_slave07_i,
-    input  wire         hreadyout_slave07_i,
-    input  wire         hresp_slave07_i,
+    output wire        hsel_slave07_o,
+    output wire [31:0] haddr_slave07_o,
+    output wire [31:0] hwdata_slave07_o,
+    output wire        hwrite_slave07_o,
+    output wire  [1:0] htrans_slave07_o,
+    output wire  [2:0] hsize_slave07_o,
+    output wire        hready_slave07_o,
+    output wire  [2:0] hburst_slave07_o,
+    output wire  [3:0] hprot_slave07_o,
+    output wire        hmastlock_slave07_o,
+    input  wire [31:0] hrdata_slave07_i,
+    input  wire        hreadyout_slave07_i,
+    input  wire        hresp_slave07_i,
 /* AHB slave device 08 (IRAM 1 Block 3) signal */
-    output wire         hsel_slave08_o,
-    output wire [31: 0] haddr_slave08_o,
-    output wire [31: 0] hwdata_slave08_o,
-    output wire         hwrite_slave08_o,
-    output wire  [1: 0] htrans_slave08_o,
-    output wire  [2: 0] hsize_slave08_o,
-    output wire         hready_slave08_o,
-    output wire  [2: 0] hburst_slave08_o,
-    output wire  [3: 0] hprot_slave08_o,
-    output wire         hmastlock_slave08_o,
-    input  wire [31: 0] hrdata_slave08_i,
-    input  wire         hreadyout_slave08_i,
-    input  wire         hresp_slave08_i,
+    output wire        hsel_slave08_o,
+    output wire [31:0] haddr_slave08_o,
+    output wire [31:0] hwdata_slave08_o,
+    output wire        hwrite_slave08_o,
+    output wire  [1:0] htrans_slave08_o,
+    output wire  [2:0] hsize_slave08_o,
+    output wire        hready_slave08_o,
+    output wire  [2:0] hburst_slave08_o,
+    output wire  [3:0] hprot_slave08_o,
+    output wire        hmastlock_slave08_o,
+    input  wire [31:0] hrdata_slave08_i,
+    input  wire        hreadyout_slave08_i,
+    input  wire        hresp_slave08_i,
 /* AHB slave device 09 (IRAM 1 Block 4) signal */
-    output wire         hsel_slave09_o,
-    output wire [31: 0] haddr_slave09_o,
-    output wire [31: 0] hwdata_slave09_o,
-    output wire         hwrite_slave09_o,
-    output wire  [1: 0] htrans_slave09_o,
-    output wire  [2: 0] hsize_slave09_o,
-    output wire         hready_slave09_o,
-    output wire  [2: 0] hburst_slave09_o,
-    output wire  [3: 0] hprot_slave09_o,
-    output wire         hmastlock_slave09_o,
-    input  wire [31: 0] hrdata_slave09_i,
-    input  wire         hreadyout_slave09_i,
-    input  wire         hresp_slave09_i,
+    output wire        hsel_slave09_o,
+    output wire [31:0] haddr_slave09_o,
+    output wire [31:0] hwdata_slave09_o,
+    output wire        hwrite_slave09_o,
+    output wire  [1:0] htrans_slave09_o,
+    output wire  [2:0] hsize_slave09_o,
+    output wire        hready_slave09_o,
+    output wire  [2:0] hburst_slave09_o,
+    output wire  [3:0] hprot_slave09_o,
+    output wire        hmastlock_slave09_o,
+    input  wire [31:0] hrdata_slave09_i,
+    input  wire        hreadyout_slave09_i,
+    input  wire        hresp_slave09_i,
 /* AHB slave device 10 (GPIO A) signal */
-    output wire         hsel_slave10_o,
-    output wire [31: 0] haddr_slave10_o,
-    output wire [31: 0] hwdata_slave10_o,
-    output wire         hwrite_slave10_o,
-    output wire  [1: 0] htrans_slave10_o,
-    output wire  [2: 0] hsize_slave10_o,
-    output wire         hready_slave10_o,
-    output wire  [2: 0] hburst_slave10_o,
-    output wire  [3: 0] hprot_slave10_o,
-    output wire         hmastlock_slave10_o,
-    input  wire [31: 0] hrdata_slave10_i,
-    input  wire         hreadyout_slave10_i,
-    input  wire         hresp_slave10_i,
+    output wire        hsel_slave10_o,
+    output wire [31:0] haddr_slave10_o,
+    output wire [31:0] hwdata_slave10_o,
+    output wire        hwrite_slave10_o,
+    output wire  [1:0] htrans_slave10_o,
+    output wire  [2:0] hsize_slave10_o,
+    output wire        hready_slave10_o,
+    output wire  [2:0] hburst_slave10_o,
+    output wire  [3:0] hprot_slave10_o,
+    output wire        hmastlock_slave10_o,
+    input  wire [31:0] hrdata_slave10_i,
+    input  wire        hreadyout_slave10_i,
+    input  wire        hresp_slave10_i,
 /* AHB slave device 11 (GPIO B) signal */
-    output wire         hsel_slave11_o,
-    output wire [31: 0] haddr_slave11_o,
-    output wire [31: 0] hwdata_slave11_o,
-    output wire         hwrite_slave11_o,
-    output wire  [1: 0] htrans_slave11_o,
-    output wire  [2: 0] hsize_slave11_o,
-    output wire         hready_slave11_o,
-    output wire  [2: 0] hburst_slave11_o,
-    output wire  [3: 0] hprot_slave11_o,
-    output wire         hmastlock_slave11_o,
-    input  wire [31: 0] hrdata_slave11_i,
-    input  wire         hreadyout_slave11_i,
-    input  wire         hresp_slave11_i,
+    output wire        hsel_slave11_o,
+    output wire [31:0] haddr_slave11_o,
+    output wire [31:0] hwdata_slave11_o,
+    output wire        hwrite_slave11_o,
+    output wire  [1:0] htrans_slave11_o,
+    output wire  [2:0] hsize_slave11_o,
+    output wire        hready_slave11_o,
+    output wire  [2:0] hburst_slave11_o,
+    output wire  [3:0] hprot_slave11_o,
+    output wire        hmastlock_slave11_o,
+    input  wire [31:0] hrdata_slave11_i,
+    input  wire        hreadyout_slave11_i,
+    input  wire        hresp_slave11_i,
 /* AHB slave device 12 (UART 1) signal */
-    output wire         hsel_slave12_o,
-    output wire [31: 0] haddr_slave12_o,
-    output wire [31: 0] hwdata_slave12_o,
-    output wire         hwrite_slave12_o,
-    output wire  [1: 0] htrans_slave12_o,
-    output wire  [2: 0] hsize_slave12_o,
-    output wire         hready_slave12_o,
-    output wire  [2: 0] hburst_slave12_o,
-    output wire  [3: 0] hprot_slave12_o,
-    output wire         hmastlock_slave12_o,
-    input  wire [31: 0] hrdata_slave12_i,
-    input  wire         hreadyout_slave12_i,
-    input  wire         hresp_slave12_i,
+    output wire        hsel_slave12_o,
+    output wire [31:0] haddr_slave12_o,
+    output wire [31:0] hwdata_slave12_o,
+    output wire        hwrite_slave12_o,
+    output wire  [1:0] htrans_slave12_o,
+    output wire  [2:0] hsize_slave12_o,
+    output wire        hready_slave12_o,
+    output wire  [2:0] hburst_slave12_o,
+    output wire  [3:0] hprot_slave12_o,
+    output wire        hmastlock_slave12_o,
+    input  wire [31:0] hrdata_slave12_i,
+    input  wire        hreadyout_slave12_i,
+    input  wire        hresp_slave12_i,
 /* AHB slave device 13 (UART 2) signal */
-    output wire         hsel_slave13_o,
-    output wire [31: 0] haddr_slave13_o,
-    output wire [31: 0] hwdata_slave13_o,
-    output wire         hwrite_slave13_o,
-    output wire  [1: 0] htrans_slave13_o,
-    output wire  [2: 0] hsize_slave13_o,
-    output wire         hready_slave13_o,
-    output wire  [2: 0] hburst_slave13_o,
-    output wire  [3: 0] hprot_slave13_o,
-    output wire         hmastlock_slave13_o,
-    input  wire [31: 0] hrdata_slave13_i,
-    input  wire         hreadyout_slave13_i,
-    input  wire         hresp_slave13_i,
+    output wire        hsel_slave13_o,
+    output wire [31:0] haddr_slave13_o,
+    output wire [31:0] hwdata_slave13_o,
+    output wire        hwrite_slave13_o,
+    output wire  [1:0] htrans_slave13_o,
+    output wire  [2:0] hsize_slave13_o,
+    output wire        hready_slave13_o,
+    output wire  [2:0] hburst_slave13_o,
+    output wire  [3:0] hprot_slave13_o,
+    output wire        hmastlock_slave13_o,
+    input  wire [31:0] hrdata_slave13_i,
+    input  wire        hreadyout_slave13_i,
+    input  wire        hresp_slave13_i,
 /* AHB slave device 14 (TUART 1) signal */
-    output wire         hsel_slave14_o,
-    output wire [31: 0] haddr_slave14_o,
-    output wire [31: 0] hwdata_slave14_o,
-    output wire         hwrite_slave14_o,
-    output wire  [1: 0] htrans_slave14_o,
-    output wire  [2: 0] hsize_slave14_o,
-    output wire         hready_slave14_o,
-    output wire  [2: 0] hburst_slave14_o,
-    output wire  [3: 0] hprot_slave14_o,
-    output wire         hmastlock_slave14_o,
-    input  wire [31: 0] hrdata_slave14_i,
-    input  wire         hreadyout_slave14_i,
-    input  wire         hresp_slave14_i
+    output wire        hsel_slave14_o,
+    output wire [31:0] haddr_slave14_o,
+    output wire [31:0] hwdata_slave14_o,
+    output wire        hwrite_slave14_o,
+    output wire  [1:0] htrans_slave14_o,
+    output wire  [2:0] hsize_slave14_o,
+    output wire        hready_slave14_o,
+    output wire  [2:0] hburst_slave14_o,
+    output wire  [3:0] hprot_slave14_o,
+    output wire        hmastlock_slave14_o,
+    input  wire [31:0] hrdata_slave14_i,
+    input  wire        hreadyout_slave14_i,
+    input  wire        hresp_slave14_i
 );
-
     /* Transfer AHB-Lite master device global signal to all slave device */
     assign haddr_slave00_o = haddr_master_i;
     assign haddr_slave01_o = haddr_master_i;
@@ -374,52 +373,37 @@ module bus_matrix_top (
 
     /* Select AHB slave device */
     assign hsel_slave00_o =
-        (haddr_master_i >= 32'h4000_0000 && haddr_master_i <= 32'h4000_3FFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4000_0000 && haddr_master_i <= 32'h4000_3FFF) ? (1'b1) : (1'b0);
     assign hsel_slave01_o =
-        (haddr_master_i >= 32'h0000_0000 && haddr_master_i <= 32'h0000_3FFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h0000_0000 && haddr_master_i <= 32'h0000_3FFF) ? (1'b1) : (1'b0);
     assign hsel_slave02_o =
-        (haddr_master_i >= 32'h0000_4000 && haddr_master_i <= 32'h0000_7FFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h0000_4000 && haddr_master_i <= 32'h0000_7FFF) ? (1'b1) : (1'b0);
     assign hsel_slave03_o =
-        (haddr_master_i >= 32'h0000_8000 && haddr_master_i <= 32'h0000_BFFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h0000_8000 && haddr_master_i <= 32'h0000_BFFF) ? (1'b1) : (1'b0);
     assign hsel_slave04_o =
-        (haddr_master_i >= 32'h0000_C000 && haddr_master_i <= 32'h0000_FFFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h0000_C000 && haddr_master_i <= 32'h0000_FFFF) ? (1'b1) : (1'b0);
     assign hsel_slave05_o =
-        (haddr_master_i >= 32'h1FFF_0000 && haddr_master_i <= 32'h1FFF_03FF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h1FFF_0000 && haddr_master_i <= 32'h1FFF_03FF) ? (1'b1) : (1'b0);
     assign hsel_slave06_o =
-        (haddr_master_i >= 32'h2000_0000 && haddr_master_i <= 32'h2000_3FFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h2000_0000 && haddr_master_i <= 32'h2000_3FFF) ? (1'b1) : (1'b0);
     assign hsel_slave07_o =
-        (haddr_master_i >= 32'h2000_4000 && haddr_master_i <= 32'h2000_7FFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h2000_4000 && haddr_master_i <= 32'h2000_7FFF) ? (1'b1) : (1'b0);
     assign hsel_slave08_o =
-        (haddr_master_i >= 32'h2000_8000 && haddr_master_i <= 32'h2000_BFFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h2000_8000 && haddr_master_i <= 32'h2000_BFFF) ? (1'b1) : (1'b0);
     assign hsel_slave09_o =
-        (haddr_master_i >= 32'h2000_C000 && haddr_master_i <= 32'h2000_FFFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h2000_C000 && haddr_master_i <= 32'h2000_FFFF) ? (1'b1) : (1'b0);
     assign hsel_slave10_o =
-        (haddr_master_i >= 32'h4008_0000 && haddr_master_i <= 32'h4008_03FF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4008_0000 && haddr_master_i <= 32'h4008_03FF) ? (1'b1) : (1'b0);
     assign hsel_slave11_o =
-        (haddr_master_i >= 32'h4008_0400 && haddr_master_i <= 32'h4008_07FF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4008_0400 && haddr_master_i <= 32'h4008_07FF) ? (1'b1) : (1'b0);
     assign hsel_slave12_o =
-        (haddr_master_i >= 32'h4001_0000 && haddr_master_i <= 32'h4001_03FF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4001_0000 && haddr_master_i <= 32'h4001_03FF) ? (1'b1) : (1'b0);
     assign hsel_slave13_o =
-        (haddr_master_i >= 32'h4001_0400 && haddr_master_i <= 32'h4001_07FF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4001_0400 && haddr_master_i <= 32'h4001_07FF) ? (1'b1) : (1'b0);
     assign hsel_slave14_o =
-        (haddr_master_i >= 32'h4001_0800 && haddr_master_i <= 32'h4001_0BFF) ?
-        (1'b1) : (1'b0);
+        (haddr_master_i >= 32'h4001_0800 && haddr_master_i <= 32'h4001_0BFF) ? (1'b1) : (1'b0);
 
-    wire [14: 0] hsel_comb;
+    wire [14:0] hsel_comb;
 
     assign hsel_comb = {
         hsel_slave14_o,
@@ -439,7 +423,7 @@ module bus_matrix_top (
         hsel_slave00_o
     };
 
-    reg  [14: 0] hsel_comb_phase;
+    reg  [14:0] hsel_comb_phase;
 
     always @(posedge hclk_master_i or negedge hreset_master_n_i) begin
         if (!hreset_master_n_i) begin
@@ -455,99 +439,98 @@ module bus_matrix_top (
             15'h0001: begin
                 hrdata_master_o = hrdata_slave00_i;
                 hready_master_o = hreadyout_slave00_i;
-                hresp_master_o  = hresp_slave00_i;
+                hresp_master_o = hresp_slave00_i;
             end
 
             15'h0002: begin
                 hrdata_master_o = hrdata_slave01_i;
                 hready_master_o = hreadyout_slave01_i;
-                hresp_master_o  = hresp_slave01_i;
+                hresp_master_o = hresp_slave01_i;
             end
 
             15'h0004: begin
                 hrdata_master_o = hrdata_slave02_i;
                 hready_master_o = hreadyout_slave02_i;
-                hresp_master_o  = hresp_slave02_i;
+                hresp_master_o = hresp_slave02_i;
             end
 
             15'h0008: begin
                 hrdata_master_o = hrdata_slave03_i;
                 hready_master_o = hreadyout_slave03_i;
-                hresp_master_o  = hresp_slave03_i;
+                hresp_master_o = hresp_slave03_i;
             end
 
             15'h0010: begin
                 hrdata_master_o = hrdata_slave04_i;
                 hready_master_o = hreadyout_slave04_i;
-                hresp_master_o  = hresp_slave04_i;
+                hresp_master_o = hresp_slave04_i;
             end
 
             15'h0020: begin
                 hrdata_master_o = hrdata_slave05_i;
                 hready_master_o = hreadyout_slave05_i;
-                hresp_master_o  = hresp_slave05_i;
+                hresp_master_o = hresp_slave05_i;
             end
 
             15'h0040: begin
                 hrdata_master_o = hrdata_slave06_i;
                 hready_master_o = hreadyout_slave06_i;
-                hresp_master_o  = hresp_slave06_i;
+                hresp_master_o = hresp_slave06_i;
             end
 
             15'h0080: begin
                 hrdata_master_o = hrdata_slave07_i;
                 hready_master_o = hreadyout_slave07_i;
-                hresp_master_o  = hresp_slave07_i;
+                hresp_master_o = hresp_slave07_i;
             end
 
             15'h0100: begin
                 hrdata_master_o = hrdata_slave08_i;
                 hready_master_o = hreadyout_slave08_i;
-                hresp_master_o  = hresp_slave08_i;
+                hresp_master_o = hresp_slave08_i;
             end
 
             15'h0200: begin
                 hrdata_master_o = hrdata_slave09_i;
                 hready_master_o = hreadyout_slave09_i;
-                hresp_master_o  = hresp_slave09_i;
+                hresp_master_o = hresp_slave09_i;
             end
 
             15'h0400: begin
                 hrdata_master_o = hrdata_slave10_i;
                 hready_master_o = hreadyout_slave10_i;
-                hresp_master_o  = hresp_slave10_i;
+                hresp_master_o = hresp_slave10_i;
             end
 
             15'h0800: begin
                 hrdata_master_o = hrdata_slave11_i;
                 hready_master_o = hreadyout_slave11_i;
-                hresp_master_o  = hresp_slave11_i;
+                hresp_master_o = hresp_slave11_i;
             end
 
             15'h1000: begin
                 hrdata_master_o = hrdata_slave12_i;
                 hready_master_o = hreadyout_slave12_i;
-                hresp_master_o  = hresp_slave12_i;
+                hresp_master_o = hresp_slave12_i;
             end
 
             15'h2000: begin
                 hrdata_master_o = hrdata_slave13_i;
                 hready_master_o = hreadyout_slave13_i;
-                hresp_master_o  = hresp_slave13_i;
+                hresp_master_o = hresp_slave13_i;
             end
 
             15'h4000: begin
                 hrdata_master_o = hrdata_slave14_i;
                 hready_master_o = hreadyout_slave14_i;
-                hresp_master_o  = hresp_slave14_i;
+                hresp_master_o = hresp_slave14_i;
             end
 
             default: begin
                 hrdata_master_o = 32'hDEADBEEF;
                 hready_master_o = 1'b1;
-                hresp_master_o  = 1'b0;
+                hresp_master_o = 1'b0;
             end
         endcase
     end
-
 endmodule

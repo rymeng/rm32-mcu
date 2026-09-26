@@ -1,12 +1,12 @@
 `timescale 1ns / 1ps
 
 module top (
-    input wire         xclk_i,
-    input wire         xrst_n_i,
-    input wire         swclk_i,
-    inout wire         swdio_io,
-    inout wire [15: 0] port_a_io,
-    inout wire [15: 0] port_b_io
+    input wire        xclk_i,
+    input wire        xrst_n_i,
+    input wire        swclk_i,
+    inout wire        swdio_io,
+    inout wire [15:0] port_a_io,
+    inout wire [15:0] port_b_io
 );
     /* AHB-Lite master clock signal */
     reg hclk;
@@ -22,8 +22,8 @@ module top (
     wire system_rst_req;
     wire rst_bypass_enabled;
 
-    assign power_on_rst_n     = xrst_n_i;
-    assign debug_rst_n        = xrst_n_i;
+    assign power_on_rst_n = xrst_n_i;
+    assign debug_rst_n = xrst_n_i;
     assign rst_bypass_enabled = 1'b0;
 
     always @(posedge hclk or negedge xrst_n_i) begin
@@ -45,46 +45,51 @@ module top (
     wire debug_restart;
     wire external_debug_req;
 
-    assign swdi               = swdio_io;
-    assign swdio_io           = (swdo_enabled) ? swdo : 1'bz;
-    assign ntrst              = 1'b1;
-    assign tdi                = 1'b0;
-    assign debug_restart      = 1'b0;
+    assign swdi = swdio_io;
+    assign swdio_io = (swdo_enabled) ? swdo : 1'bz;
+    assign ntrst = 1'b1;
+    assign tdi = 1'b0;
+    assign debug_restart = 1'b0;
     assign external_debug_req = 1'b0;
 
     /* PMU sub-system */
     wire sleep_hold_req_n;
     wire wic_enabled_req;
     wire core_debug_power_up_req;
-    reg  core_debug_power_up_ack;
+    wire core_debug_power_up_ack;
+    (* ASYNC_REG = "TRUE" *) reg core_debug_power_up_req_sync1;
+    (* ASYNC_REG = "TRUE" *) reg core_debug_power_up_req_sync2;
 
     always @(posedge hclk or negedge xrst_n_i) begin
         if (!xrst_n_i) begin
-            core_debug_power_up_ack <= 1'b0;
+            core_debug_power_up_req_sync1 <= 1'b0;
+            core_debug_power_up_req_sync2 <= 1'b0;
         end else begin
-            core_debug_power_up_ack <= core_debug_power_up_req;
+            core_debug_power_up_req_sync1 <= core_debug_power_up_req;
+            core_debug_power_up_req_sync2 <= core_debug_power_up_req_sync1;
         end
     end
 
+    assign core_debug_power_up_ack = core_debug_power_up_req_sync2;
     assign sleep_hold_req_n = 1'b1;
     assign wic_enabled_req  = 1'b1;
 
     /* Interrupt sub-system */
-    wire [31: 0] interrupt_req;
-    wire  [7: 0] interrupt_req_latency;
-    wire         non_maskable_interrupt;
-    wire         rx_event;
+    wire [31:0] interrupt_req;
+    wire  [7:0] interrupt_req_latency;
+    wire        non_maskable_interrupt;
+    wire        rx_event;
 
-    assign interrupt_req          = 32'b0;
-    assign interrupt_req_latency  = 8'b0;
-    assign rx_event               = 1'b0;
+    assign interrupt_req = 32'b0;
+    assign interrupt_req_latency = 8'b0;
+    assign rx_event = 1'b0;
     assign non_maskable_interrupt = 1'b0;
 
-    /* SysTick */
-    wire         systick_enabled;
-    wire [25: 0] systick_calibration;
+    /* SysTick sub-system */
+    wire        systick_enabled;
+    wire [25:0] systick_calibration;
 
-    assign systick_enabled     = 1'b0;
+    assign systick_enabled = 1'b0;
     assign systick_calibration = 26'b0;
 
     /* Scan mode sub-system */
@@ -93,22 +98,22 @@ module top (
     assign scan_enabled = 1'b0;
 
     /* ECO information */
-    wire [27: 0] eco_rev;
+    wire [27:0] eco_rev;
 
     assign eco_rev = 28'b0;
 
     /* AHB-Lite master signal */
-    wire [31: 0] haddr_master;
-    wire [31: 0] hwdata_master;
-    wire         hwrite_master;
-    wire  [1: 0] htrans_master;
-    wire  [2: 0] hsize_master;
-    wire  [2: 0] hburst_master;
-    wire  [3: 0] hprot_master;
-    wire         hmastlock_master;
-    wire [31: 0] hrdata_master;
-    wire         hready_master;
-    wire         hresp_master;
+    wire [31:0] haddr_master;
+    wire [31:0] hwdata_master;
+    wire        hwrite_master;
+    wire  [1:0] htrans_master;
+    wire  [2:0] hsize_master;
+    wire  [2:0] hburst_master;
+    wire  [3:0] hprot_master;
+    wire        hmastlock_master;
+    wire [31:0] hrdata_master;
+    wire        hready_master;
+    wire        hresp_master;
 
     /* ARM Cortex-M0 sub-system */
     CORTEXM0INTEGRATION core1 (
@@ -171,67 +176,58 @@ module top (
         .RSTBYPASS     (rst_bypass_enabled)
     );
 
-    /* AFIO wire */
-    wire uart1_txd;
-    wire uart1_rxd;
-    wire uart1_swap;
-    wire uart1_txd_output_enabled;
-    wire uart1_rxd_output_enabled;
-    wire uart2_txd;
-    wire uart2_rxd;
-    wire uart2_swap;
-    wire uart2_txd_output_enabled;
-    wire uart2_rxd_output_enabled;
-    wire tuart1_txd;
-    wire tuart1_rxd;
-    wire tuart1_swap;
-    wire tuart1_txd_output_enabled;
-    wire tuart1_rxd_output_enabled;
-
     /* IOMUX sub-system */
-    wire  [3: 0] gpioa_pin00_alternate_number;
-    wire  [3: 0] gpioa_pin01_alternate_number;
-    wire  [3: 0] gpioa_pin02_alternate_number;
-    wire  [3: 0] gpioa_pin03_alternate_number;
-    wire  [3: 0] gpioa_pin04_alternate_number;
-    wire  [3: 0] gpioa_pin05_alternate_number;
-    wire  [3: 0] gpioa_pin06_alternate_number;
-    wire  [3: 0] gpioa_pin07_alternate_number;
-    wire  [3: 0] gpioa_pin08_alternate_number;
-    wire  [3: 0] gpioa_pin09_alternate_number;
-    wire  [3: 0] gpioa_pin10_alternate_number;
-    wire  [3: 0] gpioa_pin11_alternate_number;
-    wire  [3: 0] gpioa_pin12_alternate_number;
-    wire  [3: 0] gpioa_pin13_alternate_number;
-    wire  [3: 0] gpioa_pin14_alternate_number;
-    wire  [3: 0] gpioa_pin15_alternate_number;
-    wire [15: 0] gpioa_afio_enabled;
-    wire [15: 0] gpioa_afio_output_enabled;
-    wire [15: 0] gpioa_afio_output_data;
-    wire [15: 0] gpioa_afio_input_data;
+    wire        uart1_txd;
+    wire        uart1_rxd;
+    wire        uart1_swap;
+    wire        uart2_txd;
+    wire        uart2_rxd;
+    wire        uart2_swap;
+    wire        tuart1_txd;
+    wire        tuart1_rxd;
+    wire        tuart1_swap;
+    wire  [3:0] gpioa_pin00_alternate_number;
+    wire  [3:0] gpioa_pin01_alternate_number;
+    wire  [3:0] gpioa_pin02_alternate_number;
+    wire  [3:0] gpioa_pin03_alternate_number;
+    wire  [3:0] gpioa_pin04_alternate_number;
+    wire  [3:0] gpioa_pin05_alternate_number;
+    wire  [3:0] gpioa_pin06_alternate_number;
+    wire  [3:0] gpioa_pin07_alternate_number;
+    wire  [3:0] gpioa_pin08_alternate_number;
+    wire  [3:0] gpioa_pin09_alternate_number;
+    wire  [3:0] gpioa_pin10_alternate_number;
+    wire  [3:0] gpioa_pin11_alternate_number;
+    wire  [3:0] gpioa_pin12_alternate_number;
+    wire  [3:0] gpioa_pin13_alternate_number;
+    wire  [3:0] gpioa_pin14_alternate_number;
+    wire  [3:0] gpioa_pin15_alternate_number;
+    wire [15:0] gpioa_afio_enabled;
+    wire [15:0] gpioa_afio_output_enabled;
+    wire [15:0] gpioa_afio_output_data;
+    wire [15:0] gpioa_afio_input_data;
+    wire  [3:0] gpiob_pin00_alternate_number;
+    wire  [3:0] gpiob_pin01_alternate_number;
+    wire  [3:0] gpiob_pin02_alternate_number;
+    wire  [3:0] gpiob_pin03_alternate_number;
+    wire  [3:0] gpiob_pin04_alternate_number;
+    wire  [3:0] gpiob_pin05_alternate_number;
+    wire  [3:0] gpiob_pin06_alternate_number;
+    wire  [3:0] gpiob_pin07_alternate_number;
+    wire  [3:0] gpiob_pin08_alternate_number;
+    wire  [3:0] gpiob_pin09_alternate_number;
+    wire  [3:0] gpiob_pin10_alternate_number;
+    wire  [3:0] gpiob_pin11_alternate_number;
+    wire  [3:0] gpiob_pin12_alternate_number;
+    wire  [3:0] gpiob_pin13_alternate_number;
+    wire  [3:0] gpiob_pin14_alternate_number;
+    wire  [3:0] gpiob_pin15_alternate_number;
+    wire [15:0] gpiob_afio_enabled;
+    wire [15:0] gpiob_afio_output_enabled;
+    wire [15:0] gpiob_afio_output_data;
+    wire [15:0] gpiob_afio_input_data;
 
-    wire  [3: 0] gpiob_pin00_alternate_number;
-    wire  [3: 0] gpiob_pin01_alternate_number;
-    wire  [3: 0] gpiob_pin02_alternate_number;
-    wire  [3: 0] gpiob_pin03_alternate_number;
-    wire  [3: 0] gpiob_pin04_alternate_number;
-    wire  [3: 0] gpiob_pin05_alternate_number;
-    wire  [3: 0] gpiob_pin06_alternate_number;
-    wire  [3: 0] gpiob_pin07_alternate_number;
-    wire  [3: 0] gpiob_pin08_alternate_number;
-    wire  [3: 0] gpiob_pin09_alternate_number;
-    wire  [3: 0] gpiob_pin10_alternate_number;
-    wire  [3: 0] gpiob_pin11_alternate_number;
-    wire  [3: 0] gpiob_pin12_alternate_number;
-    wire  [3: 0] gpiob_pin13_alternate_number;
-    wire  [3: 0] gpiob_pin14_alternate_number;
-    wire  [3: 0] gpiob_pin15_alternate_number;
-    wire [15: 0] gpiob_afio_enabled;
-    wire [15: 0] gpiob_afio_output_enabled;
-    wire [15: 0] gpiob_afio_output_data;
-    wire [15: 0] gpiob_afio_input_data;
-
-    iomux iomux_inst (
+    iomux_top iomux (
         .gpioa_pin00_alternate_number_i (gpioa_pin00_alternate_number),
         .gpioa_pin01_alternate_number_i (gpioa_pin01_alternate_number),
         .gpioa_pin02_alternate_number_i (gpioa_pin02_alternate_number),
@@ -273,274 +269,618 @@ module top (
         .gpiob_afio_output_data_o       (gpiob_afio_output_data),
         .gpiob_afio_input_data_i        (gpiob_afio_input_data),
         .uart1_swap_i                   (uart1_swap),
-        .uart1_txd_output_enabled_i     (uart1_txd_output_enabled),
-        .uart1_rxd_output_enabled_i     (uart1_rxd_output_enabled),
         .uart1_txd_i                    (uart1_txd),
         .uart1_rxd_o                    (uart1_rxd),
         .uart2_swap_i                   (uart2_swap),
-        .uart2_txd_output_enabled_i     (uart2_txd_output_enabled),
-        .uart2_rxd_output_enabled_i     (uart2_rxd_output_enabled),
         .uart2_txd_i                    (uart2_txd),
         .uart2_rxd_o                    (uart2_rxd),
         .tuart1_swap_i                  (tuart1_swap),
-        .tuart1_txd_output_enabled_i    (tuart1_txd_output_enabled),
-        .tuart1_rxd_output_enabled_i    (tuart1_rxd_output_enabled),
         .tuart1_txd_i                   (tuart1_txd),
         .tuart1_rxd_o                   (tuart1_rxd)
     );
 
-    /* AHB slave device 00 (RCC) signal */
-    wire         hsel_slave00;
-    wire [31: 0] haddr_slave00;
-    wire [31: 0] hwdata_slave00;
-    wire         hwrite_slave00;
-    wire  [1: 0] htrans_slave00;
-    wire  [2: 0] hsize_slave00;
-    wire         hready_slave00;
-    wire  [2: 0] hburst_slave00;
-    wire  [3: 0] hprot_slave00;
-    wire         hmastlock_slave00;
-    wire [31: 0] hrdata_slave00;
-    wire         hreadyout_slave00;
-    wire         hresp_slave00;
-
     /* AHB slave device 01 (Flash Main Bank Model Block 1) signal */
-    wire         hclk_slave01;
-    wire         hreset_n_slave01;
-    wire         hsel_slave01;
-    wire [31: 0] haddr_slave01;
-    wire [31: 0] hwdata_slave01;
-    wire         hwrite_slave01;
-    wire  [1: 0] htrans_slave01;
-    wire  [2: 0] hsize_slave01;
-    wire         hready_slave01;
-    wire  [2: 0] hburst_slave01;
-    wire  [3: 0] hprot_slave01;
-    wire         hmastlock_slave01;
-    wire [31: 0] hrdata_slave01;
-    wire         hreadyout_slave01;
-    wire         hresp_slave01;
+    wire        hclk_slave01;
+    wire        hreset_n_slave01;
+    wire        hsel_slave01;
+    wire [31:0] haddr_slave01;
+    wire [31:0] hwdata_slave01;
+    wire        hwrite_slave01;
+    wire  [1:0] htrans_slave01;
+    wire  [2:0] hsize_slave01;
+    wire        hready_slave01;
+    wire  [2:0] hburst_slave01;
+    wire  [3:0] hprot_slave01;
+    wire        hmastlock_slave01;
+    wire [31:0] hrdata_slave01;
+    wire        hreadyout_slave01;
+    wire        hresp_slave01;
+
+    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block1 (
+        .hclk_i      (hclk_slave01),
+        .hreset_n_i  (hreset_n_slave01),
+        .hsel_i      (hsel_slave01),
+        .haddr_i     (haddr_slave01),
+        .hwdata_i    (hwdata_slave01),
+        .hwrite_i    (hwrite_slave01),
+        .htrans_i    (htrans_slave01),
+        .hsize_i     (hsize_slave01),
+        .hready_i    (hready_slave01),
+        .hburst_i    (hburst_slave01),
+        .hprot_i     (hprot_slave01),
+        .hmastlock_i (hmastlock_slave01),
+        .hrdata_o    (hrdata_slave01),
+        .hreadyout_o (hreadyout_slave01),
+        .hresp_o     (hresp_slave01)
+    );
 
     /* AHB slave device 02 (Flash Main Bank Model Block 2) signal */
-    wire         hclk_slave02;
-    wire         hreset_n_slave02;
-    wire         hsel_slave02;
-    wire [31: 0] haddr_slave02;
-    wire [31: 0] hwdata_slave02;
-    wire         hwrite_slave02;
-    wire  [1: 0] htrans_slave02;
-    wire  [2: 0] hsize_slave02;
-    wire         hready_slave02;
-    wire  [2: 0] hburst_slave02;
-    wire  [3: 0] hprot_slave02;
-    wire         hmastlock_slave02;
-    wire [31: 0] hrdata_slave02;
-    wire         hreadyout_slave02;
-    wire         hresp_slave02;
+    wire        hclk_slave02;
+    wire        hreset_n_slave02;
+    wire        hsel_slave02;
+    wire [31:0] haddr_slave02;
+    wire [31:0] hwdata_slave02;
+    wire        hwrite_slave02;
+    wire  [1:0] htrans_slave02;
+    wire  [2:0] hsize_slave02;
+    wire        hready_slave02;
+    wire  [2:0] hburst_slave02;
+    wire  [3:0] hprot_slave02;
+    wire        hmastlock_slave02;
+    wire [31:0] hrdata_slave02;
+    wire        hreadyout_slave02;
+    wire        hresp_slave02;
+
+    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block2 (
+        .hclk_i      (hclk_slave02),
+        .hreset_n_i  (hreset_n_slave02),
+        .hsel_i      (hsel_slave02),
+        .haddr_i     (haddr_slave02),
+        .hwdata_i    (hwdata_slave02),
+        .hwrite_i    (hwrite_slave02),
+        .htrans_i    (htrans_slave02),
+        .hsize_i     (hsize_slave02),
+        .hready_i    (hready_slave02),
+        .hburst_i    (hburst_slave02),
+        .hprot_i     (hprot_slave02),
+        .hmastlock_i (hmastlock_slave02),
+        .hrdata_o    (hrdata_slave02),
+        .hreadyout_o (hreadyout_slave02),
+        .hresp_o     (hresp_slave02)
+    );
 
     /* AHB slave device 03 (Flash Main Bank Model Block 3) signal */
-    wire         hclk_slave03;
-    wire         hreset_n_slave03;
-    wire         hsel_slave03;
-    wire [31: 0] haddr_slave03;
-    wire [31: 0] hwdata_slave03;
-    wire         hwrite_slave03;
-    wire  [1: 0] htrans_slave03;
-    wire  [2: 0] hsize_slave03;
-    wire         hready_slave03;
-    wire  [2: 0] hburst_slave03;
-    wire  [3: 0] hprot_slave03;
-    wire         hmastlock_slave03;
-    wire [31: 0] hrdata_slave03;
-    wire         hreadyout_slave03;
-    wire         hresp_slave03;
+    wire        hclk_slave03;
+    wire        hreset_n_slave03;
+    wire        hsel_slave03;
+    wire [31:0] haddr_slave03;
+    wire [31:0] hwdata_slave03;
+    wire        hwrite_slave03;
+    wire  [1:0] htrans_slave03;
+    wire  [2:0] hsize_slave03;
+    wire        hready_slave03;
+    wire  [2:0] hburst_slave03;
+    wire  [3:0] hprot_slave03;
+    wire        hmastlock_slave03;
+    wire [31:0] hrdata_slave03;
+    wire        hreadyout_slave03;
+    wire        hresp_slave03;
+
+    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block3 (
+        .hclk_i      (hclk_slave03),
+        .hreset_n_i  (hreset_n_slave03),
+        .hsel_i      (hsel_slave03),
+        .haddr_i     (haddr_slave03),
+        .hwdata_i    (hwdata_slave03),
+        .hwrite_i    (hwrite_slave03),
+        .htrans_i    (htrans_slave03),
+        .hsize_i     (hsize_slave03),
+        .hready_i    (hready_slave03),
+        .hburst_i    (hburst_slave03),
+        .hprot_i     (hprot_slave03),
+        .hmastlock_i (hmastlock_slave03),
+        .hrdata_o    (hrdata_slave03),
+        .hreadyout_o (hreadyout_slave03),
+        .hresp_o     (hresp_slave03)
+    );
 
     /* AHB slave device 04 (Flash Main Bank Model Block 4) signal */
-    wire         hclk_slave04;
-    wire         hreset_n_slave04;
-    wire         hsel_slave04;
-    wire [31: 0] haddr_slave04;
-    wire [31: 0] hwdata_slave04;
-    wire         hwrite_slave04;
-    wire  [1: 0] htrans_slave04;
-    wire  [2: 0] hsize_slave04;
-    wire         hready_slave04;
-    wire  [2: 0] hburst_slave04;
-    wire  [3: 0] hprot_slave04;
-    wire         hmastlock_slave04;
-    wire [31: 0] hrdata_slave04;
-    wire         hreadyout_slave04;
-    wire         hresp_slave04;
+    wire        hclk_slave04;
+    wire        hreset_n_slave04;
+    wire        hsel_slave04;
+    wire [31:0] haddr_slave04;
+    wire [31:0] hwdata_slave04;
+    wire        hwrite_slave04;
+    wire  [1:0] htrans_slave04;
+    wire  [2:0] hsize_slave04;
+    wire        hready_slave04;
+    wire  [2:0] hburst_slave04;
+    wire  [3:0] hprot_slave04;
+    wire        hmastlock_slave04;
+    wire [31:0] hrdata_slave04;
+    wire        hreadyout_slave04;
+    wire        hresp_slave04;
+
+    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block4 (
+        .hclk_i      (hclk_slave04),
+        .hreset_n_i  (hreset_n_slave04),
+        .hsel_i      (hsel_slave04),
+        .haddr_i     (haddr_slave04),
+        .hwdata_i    (hwdata_slave04),
+        .hwrite_i    (hwrite_slave04),
+        .htrans_i    (htrans_slave04),
+        .hsize_i     (hsize_slave04),
+        .hready_i    (hready_slave04),
+        .hburst_i    (hburst_slave04),
+        .hprot_i     (hprot_slave04),
+        .hmastlock_i (hmastlock_slave04),
+        .hrdata_o    (hrdata_slave04),
+        .hreadyout_o (hreadyout_slave04),
+        .hresp_o     (hresp_slave04)
+    );
 
     /* AHB slave device 05 (Flash Option Byte Model) signal */
-    wire         hclk_slave05;
-    wire         hreset_n_slave05;
-    wire         hsel_slave05;
-    wire [31: 0] haddr_slave05;
-    wire [31: 0] hwdata_slave05;
-    wire         hwrite_slave05;
-    wire  [1: 0] htrans_slave05;
-    wire  [2: 0] hsize_slave05;
-    wire         hready_slave05;
-    wire  [2: 0] hburst_slave05;
-    wire  [3: 0] hprot_slave05;
-    wire         hmastlock_slave05;
-    wire [31: 0] hrdata_slave05;
-    wire         hreadyout_slave05;
-    wire         hresp_slave05;
+    wire        hclk_slave05;
+    wire        hreset_n_slave05;
+    wire        hsel_slave05;
+    wire [31:0] haddr_slave05;
+    wire [31:0] hwdata_slave05;
+    wire        hwrite_slave05;
+    wire  [1:0] htrans_slave05;
+    wire  [2:0] hsize_slave05;
+    wire        hready_slave05;
+    wire  [2:0] hburst_slave05;
+    wire  [3:0] hprot_slave05;
+    wire        hmastlock_slave05;
+    wire [31:0] hrdata_slave05;
+    wire        hreadyout_slave05;
+    wire        hresp_slave05;
+
+    bram_top #(.ADDR_WIDTH (8)) flash_option_byte_bank_model (
+        .hclk_i      (hclk_slave05),
+        .hreset_n_i  (hreset_n_slave05),
+        .hsel_i      (hsel_slave05),
+        .haddr_i     (haddr_slave05),
+        .hwdata_i    (hwdata_slave05),
+        .hwrite_i    (hwrite_slave05),
+        .htrans_i    (htrans_slave05),
+        .hsize_i     (hsize_slave05),
+        .hready_i    (hready_slave05),
+        .hburst_i    (hburst_slave05),
+        .hprot_i     (hprot_slave05),
+        .hmastlock_i (hmastlock_slave05),
+        .hrdata_o    (hrdata_slave05),
+        .hreadyout_o (hreadyout_slave05),
+        .hresp_o     (hresp_slave05)
+    );
 
     /* AHB slave device 06 (IRAM 1 Block 1) signal */
-    wire         hclk_slave06;
-    wire         hreset_n_slave06;
-    wire         hsel_slave06;
-    wire [31: 0] haddr_slave06;
-    wire [31: 0] hwdata_slave06;
-    wire         hwrite_slave06;
-    wire  [1: 0] htrans_slave06;
-    wire  [2: 0] hsize_slave06;
-    wire         hready_slave06;
-    wire  [2: 0] hburst_slave06;
-    wire  [3: 0] hprot_slave06;
-    wire         hmastlock_slave06;
-    wire [31: 0] hrdata_slave06;
-    wire         hreadyout_slave06;
-    wire         hresp_slave06;
+    wire        hclk_slave06;
+    wire        hreset_n_slave06;
+    wire        hsel_slave06;
+    wire [31:0] haddr_slave06;
+    wire [31:0] hwdata_slave06;
+    wire        hwrite_slave06;
+    wire  [1:0] htrans_slave06;
+    wire  [2:0] hsize_slave06;
+    wire        hready_slave06;
+    wire  [2:0] hburst_slave06;
+    wire  [3:0] hprot_slave06;
+    wire        hmastlock_slave06;
+    wire [31:0] hrdata_slave06;
+    wire        hreadyout_slave06;
+    wire        hresp_slave06;
+
+    bram_top #(.ADDR_WIDTH (12)) iram1_block1 (
+        .hclk_i      (hclk_slave06),
+        .hreset_n_i  (hreset_n_slave06),
+        .hsel_i      (hsel_slave06),
+        .haddr_i     (haddr_slave06),
+        .hwdata_i    (hwdata_slave06),
+        .hwrite_i    (hwrite_slave06),
+        .htrans_i    (htrans_slave06),
+        .hsize_i     (hsize_slave06),
+        .hready_i    (hready_slave06),
+        .hburst_i    (hburst_slave06),
+        .hprot_i     (hprot_slave06),
+        .hmastlock_i (hmastlock_slave06),
+        .hrdata_o    (hrdata_slave06),
+        .hreadyout_o (hreadyout_slave06),
+        .hresp_o     (hresp_slave06)
+    );
 
     /* AHB slave device 07 (IRAM 1 Block 2) signal */
-    wire         hclk_slave07;
-    wire         hreset_n_slave07;
-    wire         hsel_slave07;
-    wire [31: 0] haddr_slave07;
-    wire [31: 0] hwdata_slave07;
-    wire         hwrite_slave07;
-    wire  [1: 0] htrans_slave07;
-    wire  [2: 0] hsize_slave07;
-    wire         hready_slave07;
-    wire  [2: 0] hburst_slave07;
-    wire  [3: 0] hprot_slave07;
-    wire         hmastlock_slave07;
-    wire [31: 0] hrdata_slave07;
-    wire         hreadyout_slave07;
-    wire         hresp_slave07;
+    wire        hclk_slave07;
+    wire        hreset_n_slave07;
+    wire        hsel_slave07;
+    wire [31:0] haddr_slave07;
+    wire [31:0] hwdata_slave07;
+    wire        hwrite_slave07;
+    wire  [1:0] htrans_slave07;
+    wire  [2:0] hsize_slave07;
+    wire        hready_slave07;
+    wire  [2:0] hburst_slave07;
+    wire  [3:0] hprot_slave07;
+    wire        hmastlock_slave07;
+    wire [31:0] hrdata_slave07;
+    wire        hreadyout_slave07;
+    wire        hresp_slave07;
+
+    bram_top #(.ADDR_WIDTH (12)) iram1_block2 (
+        .hclk_i      (hclk_slave07),
+        .hreset_n_i  (hreset_n_slave07),
+        .hsel_i      (hsel_slave07),
+        .haddr_i     (haddr_slave07),
+        .hwdata_i    (hwdata_slave07),
+        .hwrite_i    (hwrite_slave07),
+        .htrans_i    (htrans_slave07),
+        .hsize_i     (hsize_slave07),
+        .hready_i    (hready_slave07),
+        .hburst_i    (hburst_slave07),
+        .hprot_i     (hprot_slave07),
+        .hmastlock_i (hmastlock_slave07),
+        .hrdata_o    (hrdata_slave07),
+        .hreadyout_o (hreadyout_slave07),
+        .hresp_o     (hresp_slave07)
+    );
 
     /* AHB slave device 08 (IRAM 1 Block 3) signal */
-    wire         hclk_slave08;
-    wire         hreset_n_slave08;
-    wire         hsel_slave08;
-    wire [31: 0] haddr_slave08;
-    wire [31: 0] hwdata_slave08;
-    wire         hwrite_slave08;
-    wire  [1: 0] htrans_slave08;
-    wire  [2: 0] hsize_slave08;
-    wire         hready_slave08;
-    wire  [2: 0] hburst_slave08;
-    wire  [3: 0] hprot_slave08;
-    wire         hmastlock_slave08;
-    wire [31: 0] hrdata_slave08;
-    wire         hreadyout_slave08;
-    wire         hresp_slave08;
+    wire        hclk_slave08;
+    wire        hreset_n_slave08;
+    wire        hsel_slave08;
+    wire [31:0] haddr_slave08;
+    wire [31:0] hwdata_slave08;
+    wire        hwrite_slave08;
+    wire  [1:0] htrans_slave08;
+    wire  [2:0] hsize_slave08;
+    wire        hready_slave08;
+    wire  [2:0] hburst_slave08;
+    wire  [3:0] hprot_slave08;
+    wire        hmastlock_slave08;
+    wire [31:0] hrdata_slave08;
+    wire        hreadyout_slave08;
+    wire        hresp_slave08;
+
+    bram_top #(.ADDR_WIDTH (12)) iram1_block3 (
+        .hclk_i      (hclk_slave08),
+        .hreset_n_i  (hreset_n_slave08),
+        .hsel_i      (hsel_slave08),
+        .haddr_i     (haddr_slave08),
+        .hwdata_i    (hwdata_slave08),
+        .hwrite_i    (hwrite_slave08),
+        .htrans_i    (htrans_slave08),
+        .hsize_i     (hsize_slave08),
+        .hready_i    (hready_slave08),
+        .hburst_i    (hburst_slave08),
+        .hprot_i     (hprot_slave08),
+        .hmastlock_i (hmastlock_slave08),
+        .hrdata_o    (hrdata_slave08),
+        .hreadyout_o (hreadyout_slave08),
+        .hresp_o     (hresp_slave08)
+    );
 
     /* AHB slave device 09 (IRAM 1 Block 4) signal */
-    wire         hclk_slave09;
-    wire         hreset_n_slave09;
-    wire         hsel_slave09;
-    wire [31: 0] haddr_slave09;
-    wire [31: 0] hwdata_slave09;
-    wire         hwrite_slave09;
-    wire  [1: 0] htrans_slave09;
-    wire  [2: 0] hsize_slave09;
-    wire         hready_slave09;
-    wire  [2: 0] hburst_slave09;
-    wire  [3: 0] hprot_slave09;
-    wire         hmastlock_slave09;
-    wire [31: 0] hrdata_slave09;
-    wire         hreadyout_slave09;
-    wire         hresp_slave09;
+    wire        hclk_slave09;
+    wire        hreset_n_slave09;
+    wire        hsel_slave09;
+    wire [31:0] haddr_slave09;
+    wire [31:0] hwdata_slave09;
+    wire        hwrite_slave09;
+    wire  [1:0] htrans_slave09;
+    wire  [2:0] hsize_slave09;
+    wire        hready_slave09;
+    wire  [2:0] hburst_slave09;
+    wire  [3:0] hprot_slave09;
+    wire        hmastlock_slave09;
+    wire [31:0] hrdata_slave09;
+    wire        hreadyout_slave09;
+    wire        hresp_slave09;
+
+    bram_top #(.ADDR_WIDTH (12)) iram1_block4 (
+        .hclk_i      (hclk_slave09),
+        .hreset_n_i  (hreset_n_slave09),
+        .hsel_i      (hsel_slave09),
+        .haddr_i     (haddr_slave09),
+        .hwdata_i    (hwdata_slave09),
+        .hwrite_i    (hwrite_slave09),
+        .htrans_i    (htrans_slave09),
+        .hsize_i     (hsize_slave09),
+        .hready_i    (hready_slave09),
+        .hburst_i    (hburst_slave09),
+        .hprot_i     (hprot_slave09),
+        .hmastlock_i (hmastlock_slave09),
+        .hrdata_o    (hrdata_slave09),
+        .hreadyout_o (hreadyout_slave09),
+        .hresp_o     (hresp_slave09)
+    );
 
     /* AHB slave device 10 (GPIO A) signal */
-    wire         hclk_slave10;
-    wire         hreset_n_slave10;
-    wire         hsel_slave10;
-    wire [31: 0] haddr_slave10;
-    wire [31: 0] hwdata_slave10;
-    wire         hwrite_slave10;
-    wire  [1: 0] htrans_slave10;
-    wire  [2: 0] hsize_slave10;
-    wire         hready_slave10;
-    wire  [2: 0] hburst_slave10;
-    wire  [3: 0] hprot_slave10;
-    wire         hmastlock_slave10;
-    wire [31: 0] hrdata_slave10;
-    wire         hreadyout_slave10;
-    wire         hresp_slave10;
+    wire        hclk_slave10;
+    wire        hreset_n_slave10;
+    wire        hsel_slave10;
+    wire [31:0] haddr_slave10;
+    wire [31:0] hwdata_slave10;
+    wire        hwrite_slave10;
+    wire  [1:0] htrans_slave10;
+    wire  [2:0] hsize_slave10;
+    wire        hready_slave10;
+    wire  [2:0] hburst_slave10;
+    wire  [3:0] hprot_slave10;
+    wire        hmastlock_slave10;
+    wire [31:0] hrdata_slave10;
+    wire        hreadyout_slave10;
+    wire        hresp_slave10;
+
+    gpio_top gpioa (
+        .hclk_i                   (hclk_slave10),
+        .hreset_n_i               (hreset_n_slave10),
+        .hsel_i                   (hsel_slave10),
+        .haddr_i                  (haddr_slave10),
+        .hwdata_i                 (hwdata_slave10),
+        .hwrite_i                 (hwrite_slave10),
+        .htrans_i                 (htrans_slave10),
+        .hsize_i                  (hsize_slave10),
+        .hready_i                 (hready_slave10),
+        .hburst_i                 (hburst_slave10),
+        .hprot_i                  (hprot_slave10),
+        .hmastlock_i              (hmastlock_slave10),
+        .hrdata_o                 (hrdata_slave10),
+        .hreadyout_o              (hreadyout_slave10),
+        .hresp_o                  (hresp_slave10),
+        .pin00_alternate_number_o (gpioa_pin00_alternate_number),
+        .pin01_alternate_number_o (gpioa_pin01_alternate_number),
+        .pin02_alternate_number_o (gpioa_pin02_alternate_number),
+        .pin03_alternate_number_o (gpioa_pin03_alternate_number),
+        .pin04_alternate_number_o (gpioa_pin04_alternate_number),
+        .pin05_alternate_number_o (gpioa_pin05_alternate_number),
+        .pin06_alternate_number_o (gpioa_pin06_alternate_number),
+        .pin07_alternate_number_o (gpioa_pin07_alternate_number),
+        .pin08_alternate_number_o (gpioa_pin08_alternate_number),
+        .pin09_alternate_number_o (gpioa_pin09_alternate_number),
+        .pin10_alternate_number_o (gpioa_pin10_alternate_number),
+        .pin11_alternate_number_o (gpioa_pin11_alternate_number),
+        .pin12_alternate_number_o (gpioa_pin12_alternate_number),
+        .pin13_alternate_number_o (gpioa_pin13_alternate_number),
+        .pin14_alternate_number_o (gpioa_pin14_alternate_number),
+        .pin15_alternate_number_o (gpioa_pin15_alternate_number),
+        .afio_enabled_i           (gpioa_afio_enabled),
+        .afio_output_enabled_i    (gpioa_afio_output_enabled),
+        .afio_output_data_i       (gpioa_afio_output_data),
+        .afio_input_data_o        (gpioa_afio_input_data),
+        .pin_io                   (port_a_io)
+    );
 
     /* AHB slave device 11 (GPIO B) signal */
-    wire         hclk_slave11;
-    wire         hreset_n_slave11;
-    wire         hsel_slave11;
-    wire [31: 0] haddr_slave11;
-    wire [31: 0] hwdata_slave11;
-    wire         hwrite_slave11;
-    wire  [1: 0] htrans_slave11;
-    wire  [2: 0] hsize_slave11;
-    wire         hready_slave11;
-    wire  [2: 0] hburst_slave11;
-    wire  [3: 0] hprot_slave11;
-    wire         hmastlock_slave11;
-    wire [31: 0] hrdata_slave11;
-    wire         hreadyout_slave11;
-    wire         hresp_slave11;
+    wire        hclk_slave11;
+    wire        hreset_n_slave11;
+    wire        hsel_slave11;
+    wire [31:0] haddr_slave11;
+    wire [31:0] hwdata_slave11;
+    wire        hwrite_slave11;
+    wire  [1:0] htrans_slave11;
+    wire  [2:0] hsize_slave11;
+    wire        hready_slave11;
+    wire  [2:0] hburst_slave11;
+    wire  [3:0] hprot_slave11;
+    wire        hmastlock_slave11;
+    wire [31:0] hrdata_slave11;
+    wire        hreadyout_slave11;
+    wire        hresp_slave11;
+
+    gpio_top gpiob (
+        .hclk_i                   (hclk_slave11),
+        .hreset_n_i               (hreset_n_slave11),
+        .hsel_i                   (hsel_slave11),
+        .haddr_i                  (haddr_slave11),
+        .hwdata_i                 (hwdata_slave11),
+        .hwrite_i                 (hwrite_slave11),
+        .htrans_i                 (htrans_slave11),
+        .hsize_i                  (hsize_slave11),
+        .hready_i                 (hready_slave11),
+        .hburst_i                 (hburst_slave11),
+        .hprot_i                  (hprot_slave11),
+        .hmastlock_i              (hmastlock_slave11),
+        .hrdata_o                 (hrdata_slave11),
+        .hreadyout_o              (hreadyout_slave11),
+        .hresp_o                  (hresp_slave11),
+        .pin00_alternate_number_o (gpiob_pin00_alternate_number),
+        .pin01_alternate_number_o (gpiob_pin01_alternate_number),
+        .pin02_alternate_number_o (gpiob_pin02_alternate_number),
+        .pin03_alternate_number_o (gpiob_pin03_alternate_number),
+        .pin04_alternate_number_o (gpiob_pin04_alternate_number),
+        .pin05_alternate_number_o (gpiob_pin05_alternate_number),
+        .pin06_alternate_number_o (gpiob_pin06_alternate_number),
+        .pin07_alternate_number_o (gpiob_pin07_alternate_number),
+        .pin08_alternate_number_o (gpiob_pin08_alternate_number),
+        .pin09_alternate_number_o (gpiob_pin09_alternate_number),
+        .pin10_alternate_number_o (gpiob_pin10_alternate_number),
+        .pin11_alternate_number_o (gpiob_pin11_alternate_number),
+        .pin12_alternate_number_o (gpiob_pin12_alternate_number),
+        .pin13_alternate_number_o (gpiob_pin13_alternate_number),
+        .pin14_alternate_number_o (gpiob_pin14_alternate_number),
+        .pin15_alternate_number_o (gpiob_pin15_alternate_number),
+        .afio_enabled_i           (gpiob_afio_enabled),
+        .afio_output_enabled_i    (gpiob_afio_output_enabled),
+        .afio_output_data_i       (gpiob_afio_output_data),
+        .afio_input_data_o        (gpiob_afio_input_data),
+        .pin_io                   (port_b_io)
+    );
 
     /* AHB slave device 12 (UART 1) signal */
-    wire         hclk_slave12;
-    wire         hreset_n_slave12;
-    wire         hsel_slave12;
-    wire [31: 0] haddr_slave12;
-    wire [31: 0] hwdata_slave12;
-    wire         hwrite_slave12;
-    wire  [1: 0] htrans_slave12;
-    wire  [2: 0] hsize_slave12;
-    wire         hready_slave12;
-    wire  [2: 0] hburst_slave12;
-    wire  [3: 0] hprot_slave12;
-    wire         hmastlock_slave12;
-    wire [31: 0] hrdata_slave12;
-    wire         hreadyout_slave12;
-    wire         hresp_slave12;
+    wire        hclk_slave12;
+    wire        hreset_n_slave12;
+    wire        hsel_slave12;
+    wire [31:0] haddr_slave12;
+    wire [31:0] hwdata_slave12;
+    wire        hwrite_slave12;
+    wire  [1:0] htrans_slave12;
+    wire  [2:0] hsize_slave12;
+    wire        hready_slave12;
+    wire  [2:0] hburst_slave12;
+    wire  [3:0] hprot_slave12;
+    wire        hmastlock_slave12;
+    wire [31:0] hrdata_slave12;
+    wire        hreadyout_slave12;
+    wire        hresp_slave12;
+
+    tuart_top uart1 (
+        .hclk_i      (hclk_slave12),
+        .hreset_n_i  (hreset_n_slave12),
+        .hsel_i      (hsel_slave12),
+        .haddr_i     (haddr_slave12),
+        .hwdata_i    (hwdata_slave12),
+        .hwrite_i    (hwrite_slave12),
+        .htrans_i    (htrans_slave12),
+        .hsize_i     (hsize_slave12),
+        .hready_i    (hready_slave12),
+        .hburst_i    (hburst_slave12),
+        .hprot_i     (hprot_slave12),
+        .hmastlock_i (hmastlock_slave12),
+        .hrdata_o    (hrdata_slave12),
+        .hreadyout_o (hreadyout_slave12),
+        .hresp_o     (hresp_slave12),
+        .txd_o       (uart1_txd),
+        .rxd_i       (uart1_rxd),
+        .swap_o      (uart1_swap)
+    );
 
     /* AHB slave device 13 (UART 2) signal */
-    wire         hclk_slave13;
-    wire         hreset_n_slave13;
-    wire         hsel_slave13;
-    wire [31: 0] haddr_slave13;
-    wire [31: 0] hwdata_slave13;
-    wire         hwrite_slave13;
-    wire  [1: 0] htrans_slave13;
-    wire  [2: 0] hsize_slave13;
-    wire         hready_slave13;
-    wire  [2: 0] hburst_slave13;
-    wire  [3: 0] hprot_slave13;
-    wire         hmastlock_slave13;
-    wire [31: 0] hrdata_slave13;
-    wire         hreadyout_slave13;
-    wire         hresp_slave13;
+    wire        hclk_slave13;
+    wire        hreset_n_slave13;
+    wire        hsel_slave13;
+    wire [31:0] haddr_slave13;
+    wire [31:0] hwdata_slave13;
+    wire        hwrite_slave13;
+    wire  [1:0] htrans_slave13;
+    wire  [2:0] hsize_slave13;
+    wire        hready_slave13;
+    wire  [2:0] hburst_slave13;
+    wire  [3:0] hprot_slave13;
+    wire        hmastlock_slave13;
+    wire [31:0] hrdata_slave13;
+    wire        hreadyout_slave13;
+    wire        hresp_slave13;
+
+    tuart_top uart2 (
+        .hclk_i      (hclk_slave13),
+        .hreset_n_i  (hreset_n_slave13),
+        .hsel_i      (hsel_slave13),
+        .haddr_i     (haddr_slave13),
+        .hwdata_i    (hwdata_slave13),
+        .hwrite_i    (hwrite_slave13),
+        .htrans_i    (htrans_slave13),
+        .hsize_i     (hsize_slave13),
+        .hready_i    (hready_slave13),
+        .hburst_i    (hburst_slave13),
+        .hprot_i     (hprot_slave13),
+        .hmastlock_i (hmastlock_slave13),
+        .hrdata_o    (hrdata_slave13),
+        .hreadyout_o (hreadyout_slave13),
+        .hresp_o     (hresp_slave13),
+        .txd_o       (uart2_txd),
+        .rxd_i       (uart2_rxd),
+        .swap_o      (uart2_swap)
+    );
 
     /* AHB slave device 14 (TUART 1) signal */
-    wire         hclk_slave14;
-    wire         hreset_n_slave14;
-    wire         hsel_slave14;
-    wire [31: 0] haddr_slave14;
-    wire [31: 0] hwdata_slave14;
-    wire         hwrite_slave14;
-    wire  [1: 0] htrans_slave14;
-    wire  [2: 0] hsize_slave14;
-    wire         hready_slave14;
-    wire  [2: 0] hburst_slave14;
-    wire  [3: 0] hprot_slave14;
-    wire         hmastlock_slave14;
-    wire [31: 0] hrdata_slave14;
-    wire         hreadyout_slave14;
-    wire         hresp_slave14;
+    wire        hclk_slave14;
+    wire        hreset_n_slave14;
+    wire        hsel_slave14;
+    wire [31:0] haddr_slave14;
+    wire [31:0] hwdata_slave14;
+    wire        hwrite_slave14;
+    wire  [1:0] htrans_slave14;
+    wire  [2:0] hsize_slave14;
+    wire        hready_slave14;
+    wire  [2:0] hburst_slave14;
+    wire  [3:0] hprot_slave14;
+    wire        hmastlock_slave14;
+    wire [31:0] hrdata_slave14;
+    wire        hreadyout_slave14;
+    wire        hresp_slave14;
+
+    tuart_top tuart1 (
+        .hclk_i      (hclk_slave14),
+        .hreset_n_i  (hreset_n_slave14),
+        .hsel_i      (hsel_slave14),
+        .haddr_i     (haddr_slave14),
+        .hwdata_i    (hwdata_slave14),
+        .hwrite_i    (hwrite_slave14),
+        .htrans_i    (htrans_slave14),
+        .hsize_i     (hsize_slave14),
+        .hready_i    (hready_slave14),
+        .hburst_i    (hburst_slave14),
+        .hprot_i     (hprot_slave14),
+        .hmastlock_i (hmastlock_slave14),
+        .hrdata_o    (hrdata_slave14),
+        .hreadyout_o (hreadyout_slave14),
+        .hresp_o     (hresp_slave14),
+        .txd_o       (tuart1_txd),
+        .rxd_i       (tuart1_rxd),
+        .swap_o      (tuart1_swap)
+    );
+
+    /* AHB slave device 00 (RCC) */
+    wire        hsel_slave00;
+    wire [31:0] haddr_slave00;
+    wire [31:0] hwdata_slave00;
+    wire        hwrite_slave00;
+    wire  [1:0] htrans_slave00;
+    wire  [2:0] hsize_slave00;
+    wire        hready_slave00;
+    wire  [2:0] hburst_slave00;
+    wire  [3:0] hprot_slave00;
+    wire        hmastlock_slave00;
+    wire [31:0] hrdata_slave00;
+    wire        hreadyout_slave00;
+    wire        hresp_slave00;
+
+    rcc_top rcc (
+        .hclk_i             (hclk),
+        .hreset_n_i         (hreset_n),
+        .hsel_i             (hsel_slave00),
+        .haddr_i            (haddr_slave00),
+        .hwdata_i           (hwdata_slave00),
+        .hwrite_i           (hwrite_slave00),
+        .htrans_i           (htrans_slave00),
+        .hsize_i            (hsize_slave00),
+        .hready_i           (hready_slave00),
+        .hburst_i           (hburst_slave00),
+        .hprot_i            (hprot_slave00),
+        .hmastlock_i        (hmastlock_slave00),
+        .hrdata_o           (hrdata_slave00),
+        .hreadyout_o        (hreadyout_slave00),
+        .hresp_o            (hresp_slave00),
+
+        .hclk_slave01_o     (hclk_slave01),
+        .hreset_n_slave01_o (hreset_n_slave01),
+        .hclk_slave02_o     (hclk_slave02),
+        .hreset_n_slave02_o (hreset_n_slave02),
+        .hclk_slave03_o     (hclk_slave03),
+        .hreset_n_slave03_o (hreset_n_slave03),
+        .hclk_slave04_o     (hclk_slave04),
+        .hreset_n_slave04_o (hreset_n_slave04),
+        .hclk_slave05_o     (hclk_slave05),
+        .hreset_n_slave05_o (hreset_n_slave05),
+        .hclk_slave06_o     (hclk_slave06),
+        .hreset_n_slave06_o (hreset_n_slave06),
+        .hclk_slave07_o     (hclk_slave07),
+        .hreset_n_slave07_o (hreset_n_slave07),
+        .hclk_slave08_o     (hclk_slave08),
+        .hreset_n_slave08_o (hreset_n_slave08),
+        .hclk_slave09_o     (hclk_slave09),
+        .hreset_n_slave09_o (hreset_n_slave09),
+        .hclk_slave10_o     (hclk_slave10),
+        .hreset_n_slave10_o (hreset_n_slave10),
+        .hclk_slave11_o     (hclk_slave11),
+        .hreset_n_slave11_o (hreset_n_slave11),
+        .hclk_slave12_o     (hclk_slave12),
+        .hreset_n_slave12_o (hreset_n_slave12),
+        .hclk_slave13_o     (hclk_slave13),
+        .hreset_n_slave13_o (hreset_n_slave13),
+        .hclk_slave14_o     (hclk_slave14),
+        .hreset_n_slave14_o (hreset_n_slave14)
+    );
 
     /* Bus matrix */
     bus_matrix_top bus_matrix (
@@ -768,376 +1108,4 @@ module top (
         .hreadyout_slave14_i (hreadyout_slave14),
         .hresp_slave14_i     (hresp_slave14)
     );
-
-    /* AHB slave device 00: RCC */
-    rcc_top rcc (
-        .hclk_i             (hclk),
-        .hreset_n_i         (hreset_n),
-        .hsel_i             (hsel_slave00),
-        .haddr_i            (haddr_slave00),
-        .hwdata_i           (hwdata_slave00),
-        .hwrite_i           (hwrite_slave00),
-        .htrans_i           (htrans_slave00),
-        .hsize_i            (hsize_slave00),
-        .hready_i           (hready_slave00),
-        .hburst_i           (hburst_slave00),
-        .hprot_i            (hprot_slave00),
-        .hmastlock_i        (hmastlock_slave00),
-        .hrdata_o           (hrdata_slave00),
-        .hreadyout_o        (hreadyout_slave00),
-        .hresp_o            (hresp_slave00),
-
-        .hclk_slave01_o     (hclk_slave01),
-        .hreset_n_slave01_o (hreset_n_slave01),
-        .hclk_slave02_o     (hclk_slave02),
-        .hreset_n_slave02_o (hreset_n_slave02),
-        .hclk_slave03_o     (hclk_slave03),
-        .hreset_n_slave03_o (hreset_n_slave03),
-        .hclk_slave04_o     (hclk_slave04),
-        .hreset_n_slave04_o (hreset_n_slave04),
-        .hclk_slave05_o     (hclk_slave05),
-        .hreset_n_slave05_o (hreset_n_slave05),
-        .hclk_slave06_o     (hclk_slave06),
-        .hreset_n_slave06_o (hreset_n_slave06),
-        .hclk_slave07_o     (hclk_slave07),
-        .hreset_n_slave07_o (hreset_n_slave07),
-        .hclk_slave08_o     (hclk_slave08),
-        .hreset_n_slave08_o (hreset_n_slave08),
-        .hclk_slave09_o     (hclk_slave09),
-        .hreset_n_slave09_o (hreset_n_slave09),
-        .hclk_slave10_o     (hclk_slave10),
-        .hreset_n_slave10_o (hreset_n_slave10),
-        .hclk_slave11_o     (hclk_slave11),
-        .hreset_n_slave11_o (hreset_n_slave11),
-        .hclk_slave12_o     (hclk_slave12),
-        .hreset_n_slave12_o (hreset_n_slave12),
-        .hclk_slave13_o     (hclk_slave13),
-        .hreset_n_slave13_o (hreset_n_slave13),
-        .hclk_slave14_o     (hclk_slave14),
-        .hreset_n_slave14_o (hreset_n_slave14)
-    );
-
-    /* AHB slave device 01: Flash Main Bank Model Block 1 */
-    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block1 (
-        .hclk_i      (hclk_slave01),
-        .hreset_n_i  (hreset_n_slave01),
-        .hsel_i      (hsel_slave01),
-        .haddr_i     (haddr_slave01),
-        .hwdata_i    (hwdata_slave01),
-        .hwrite_i    (hwrite_slave01),
-        .htrans_i    (htrans_slave01),
-        .hsize_i     (hsize_slave01),
-        .hready_i    (hready_slave01),
-        .hburst_i    (hburst_slave01),
-        .hprot_i     (hprot_slave01),
-        .hmastlock_i (hmastlock_slave01),
-        .hrdata_o    (hrdata_slave01),
-        .hreadyout_o (hreadyout_slave01),
-        .hresp_o     (hresp_slave01)
-    );
-
-    /* AHB slave device 02: Flash Main Bank Model Block 2 */
-    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block2 (
-        .hclk_i      (hclk_slave02),
-        .hreset_n_i  (hreset_n_slave02),
-        .hsel_i      (hsel_slave02),
-        .haddr_i     (haddr_slave02),
-        .hwdata_i    (hwdata_slave02),
-        .hwrite_i    (hwrite_slave02),
-        .htrans_i    (htrans_slave02),
-        .hsize_i     (hsize_slave02),
-        .hready_i    (hready_slave02),
-        .hburst_i    (hburst_slave02),
-        .hprot_i     (hprot_slave02),
-        .hmastlock_i (hmastlock_slave02),
-        .hrdata_o    (hrdata_slave02),
-        .hreadyout_o (hreadyout_slave02),
-        .hresp_o     (hresp_slave02)
-    );
-
-    /* AHB slave device 03: Flash Main Bank Model Block 3 */
-    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block3 (
-        .hclk_i      (hclk_slave03),
-        .hreset_n_i  (hreset_n_slave03),
-        .hsel_i      (hsel_slave03),
-        .haddr_i     (haddr_slave03),
-        .hwdata_i    (hwdata_slave03),
-        .hwrite_i    (hwrite_slave03),
-        .htrans_i    (htrans_slave03),
-        .hsize_i     (hsize_slave03),
-        .hready_i    (hready_slave03),
-        .hburst_i    (hburst_slave03),
-        .hprot_i     (hprot_slave03),
-        .hmastlock_i (hmastlock_slave03),
-        .hrdata_o    (hrdata_slave03),
-        .hreadyout_o (hreadyout_slave03),
-        .hresp_o     (hresp_slave03)
-    );
-
-    /* AHB slave device 04: Flash Main Bank Model Block 4 */
-    bram_top #(.ADDR_WIDTH (12)) flash_main_bank_model_block4 (
-        .hclk_i      (hclk_slave04),
-        .hreset_n_i  (hreset_n_slave04),
-        .hsel_i      (hsel_slave04),
-        .haddr_i     (haddr_slave04),
-        .hwdata_i    (hwdata_slave04),
-        .hwrite_i    (hwrite_slave04),
-        .htrans_i    (htrans_slave04),
-        .hsize_i     (hsize_slave04),
-        .hready_i    (hready_slave04),
-        .hburst_i    (hburst_slave04),
-        .hprot_i     (hprot_slave04),
-        .hmastlock_i (hmastlock_slave04),
-        .hrdata_o    (hrdata_slave04),
-        .hreadyout_o (hreadyout_slave04),
-        .hresp_o     (hresp_slave04)
-    );
-
-    /* AHB slave device 05: Flash Option Byte Bank Model */
-    bram_top #(.ADDR_WIDTH (8)) flash_option_byte_bank_model (
-        .hclk_i      (hclk_slave05),
-        .hreset_n_i  (hreset_n_slave05),
-        .hsel_i      (hsel_slave05),
-        .haddr_i     (haddr_slave05),
-        .hwdata_i    (hwdata_slave05),
-        .hwrite_i    (hwrite_slave05),
-        .htrans_i    (htrans_slave05),
-        .hsize_i     (hsize_slave05),
-        .hready_i    (hready_slave05),
-        .hburst_i    (hburst_slave05),
-        .hprot_i     (hprot_slave05),
-        .hmastlock_i (hmastlock_slave05),
-        .hrdata_o    (hrdata_slave05),
-        .hreadyout_o (hreadyout_slave05),
-        .hresp_o     (hresp_slave05)
-    );
-
-    /* AHB slave device 06: IRAM 1 Block 1 */
-    bram_top #(.ADDR_WIDTH (12)) iram1_block1 (
-        .hclk_i      (hclk_slave06),
-        .hreset_n_i  (hreset_n_slave06),
-        .hsel_i      (hsel_slave06),
-        .haddr_i     (haddr_slave06),
-        .hwdata_i    (hwdata_slave06),
-        .hwrite_i    (hwrite_slave06),
-        .htrans_i    (htrans_slave06),
-        .hsize_i     (hsize_slave06),
-        .hready_i    (hready_slave06),
-        .hburst_i    (hburst_slave06),
-        .hprot_i     (hprot_slave06),
-        .hmastlock_i (hmastlock_slave06),
-        .hrdata_o    (hrdata_slave06),
-        .hreadyout_o (hreadyout_slave06),
-        .hresp_o     (hresp_slave06)
-    );
-
-    /* AHB slave device 07: IRAM 1 Block 2 */
-    bram_top #(.ADDR_WIDTH (12)) iram1_block2 (
-        .hclk_i      (hclk_slave07),
-        .hreset_n_i  (hreset_n_slave07),
-        .hsel_i      (hsel_slave07),
-        .haddr_i     (haddr_slave07),
-        .hwdata_i    (hwdata_slave07),
-        .hwrite_i    (hwrite_slave07),
-        .htrans_i    (htrans_slave07),
-        .hsize_i     (hsize_slave07),
-        .hready_i    (hready_slave07),
-        .hburst_i    (hburst_slave07),
-        .hprot_i     (hprot_slave07),
-        .hmastlock_i (hmastlock_slave07),
-        .hrdata_o    (hrdata_slave07),
-        .hreadyout_o (hreadyout_slave07),
-        .hresp_o     (hresp_slave07)
-    );
-
-    /* AHB slave device 08: IRAM 1 Block 3 */
-    bram_top #(.ADDR_WIDTH (12)) iram1_block3 (
-        .hclk_i      (hclk_slave08),
-        .hreset_n_i  (hreset_n_slave08),
-        .hsel_i      (hsel_slave08),
-        .haddr_i     (haddr_slave08),
-        .hwdata_i    (hwdata_slave08),
-        .hwrite_i    (hwrite_slave08),
-        .htrans_i    (htrans_slave08),
-        .hsize_i     (hsize_slave08),
-        .hready_i    (hready_slave08),
-        .hburst_i    (hburst_slave08),
-        .hprot_i     (hprot_slave08),
-        .hmastlock_i (hmastlock_slave08),
-        .hrdata_o    (hrdata_slave08),
-        .hreadyout_o (hreadyout_slave08),
-        .hresp_o     (hresp_slave08)
-    );
-
-    /* AHB slave device 09: IRAM 1 Block 4 */
-    bram_top #(.ADDR_WIDTH (12)) sram_block4 (
-        .hclk_i      (hclk_slave09),
-        .hreset_n_i  (hreset_n_slave09),
-        .hsel_i      (hsel_slave09),
-        .haddr_i     (haddr_slave09),
-        .hwdata_i    (hwdata_slave09),
-        .hwrite_i    (hwrite_slave09),
-        .htrans_i    (htrans_slave09),
-        .hsize_i     (hsize_slave09),
-        .hready_i    (hready_slave09),
-        .hburst_i    (hburst_slave09),
-        .hprot_i     (hprot_slave09),
-        .hmastlock_i (hmastlock_slave09),
-        .hrdata_o    (hrdata_slave09),
-        .hreadyout_o (hreadyout_slave09),
-        .hresp_o     (hresp_slave09)
-    );
-
-    /* AHB slave device 10: GPIO A */
-    gpio_top gpioa (
-        .hclk_i                   (hclk_slave10),
-        .hreset_n_i               (hreset_n_slave10),
-        .hsel_i                   (hsel_slave10),
-        .haddr_i                  (haddr_slave10),
-        .hwdata_i                 (hwdata_slave10),
-        .hwrite_i                 (hwrite_slave10),
-        .htrans_i                 (htrans_slave10),
-        .hsize_i                  (hsize_slave10),
-        .hready_i                 (hready_slave10),
-        .hburst_i                 (hburst_slave10),
-        .hprot_i                  (hprot_slave10),
-        .hmastlock_i              (hmastlock_slave10),
-        .hrdata_o                 (hrdata_slave10),
-        .hreadyout_o              (hreadyout_slave10),
-        .hresp_o                  (hresp_slave10),
-        .pin00_alternate_number_o (gpioa_pin00_alternate_number),
-        .pin01_alternate_number_o (gpioa_pin01_alternate_number),
-        .pin02_alternate_number_o (gpioa_pin02_alternate_number),
-        .pin03_alternate_number_o (gpioa_pin03_alternate_number),
-        .pin04_alternate_number_o (gpioa_pin04_alternate_number),
-        .pin05_alternate_number_o (gpioa_pin05_alternate_number),
-        .pin06_alternate_number_o (gpioa_pin06_alternate_number),
-        .pin07_alternate_number_o (gpioa_pin07_alternate_number),
-        .pin08_alternate_number_o (gpioa_pin08_alternate_number),
-        .pin09_alternate_number_o (gpioa_pin09_alternate_number),
-        .pin10_alternate_number_o (gpioa_pin10_alternate_number),
-        .pin11_alternate_number_o (gpioa_pin11_alternate_number),
-        .pin12_alternate_number_o (gpioa_pin12_alternate_number),
-        .pin13_alternate_number_o (gpioa_pin13_alternate_number),
-        .pin14_alternate_number_o (gpioa_pin14_alternate_number),
-        .pin15_alternate_number_o (gpioa_pin15_alternate_number),
-        .afio_enabled_i           (gpioa_afio_enabled),
-        .afio_output_enabled_i    (gpioa_afio_output_enabled),
-        .afio_output_data_i       (gpioa_afio_output_data),
-        .afio_input_data_o        (gpioa_afio_input_data),
-        .pin_io                   (port_a_io)
-    );
-
-    /* AHB slave device 11: GPIO B */
-    gpio_top gpiob (
-        .hclk_i                   (hclk_slave11),
-        .hreset_n_i               (hreset_n_slave11),
-        .hsel_i                   (hsel_slave11),
-        .haddr_i                  (haddr_slave11),
-        .hwdata_i                 (hwdata_slave11),
-        .hwrite_i                 (hwrite_slave11),
-        .htrans_i                 (htrans_slave11),
-        .hsize_i                  (hsize_slave11),
-        .hready_i                 (hready_slave11),
-        .hburst_i                 (hburst_slave11),
-        .hprot_i                  (hprot_slave11),
-        .hmastlock_i              (hmastlock_slave11),
-        .hrdata_o                 (hrdata_slave11),
-        .hreadyout_o              (hreadyout_slave11),
-        .hresp_o                  (hresp_slave11),
-        .pin00_alternate_number_o (gpiob_pin00_alternate_number),
-        .pin01_alternate_number_o (gpiob_pin01_alternate_number),
-        .pin02_alternate_number_o (gpiob_pin02_alternate_number),
-        .pin03_alternate_number_o (gpiob_pin03_alternate_number),
-        .pin04_alternate_number_o (gpiob_pin04_alternate_number),
-        .pin05_alternate_number_o (gpiob_pin05_alternate_number),
-        .pin06_alternate_number_o (gpiob_pin06_alternate_number),
-        .pin07_alternate_number_o (gpiob_pin07_alternate_number),
-        .pin08_alternate_number_o (gpiob_pin08_alternate_number),
-        .pin09_alternate_number_o (gpiob_pin09_alternate_number),
-        .pin10_alternate_number_o (gpiob_pin10_alternate_number),
-        .pin11_alternate_number_o (gpiob_pin11_alternate_number),
-        .pin12_alternate_number_o (gpiob_pin12_alternate_number),
-        .pin13_alternate_number_o (gpiob_pin13_alternate_number),
-        .pin14_alternate_number_o (gpiob_pin14_alternate_number),
-        .pin15_alternate_number_o (gpiob_pin15_alternate_number),
-        .afio_enabled_i           (gpiob_afio_enabled),
-        .afio_output_enabled_i    (gpiob_afio_output_enabled),
-        .afio_output_data_i       (gpiob_afio_output_data),
-        .afio_input_data_o        (gpiob_afio_input_data),
-        .pin_io                   (port_b_io)
-    );
-
-    /* AHB slave device 12: UART 1 */
-    tuart_top uart1 (
-        .hclk_i               (hclk_slave12),
-        .hreset_n_i           (hreset_n_slave12),
-        .hsel_i               (hsel_slave12),
-        .haddr_i              (haddr_slave12),
-        .hwdata_i             (hwdata_slave12),
-        .hwrite_i             (hwrite_slave12),
-        .htrans_i             (htrans_slave12),
-        .hsize_i              (hsize_slave12),
-        .hready_i             (hready_slave12),
-        .hburst_i             (hburst_slave12),
-        .hprot_i              (hprot_slave12),
-        .hmastlock_i          (hmastlock_slave12),
-        .hrdata_o             (hrdata_slave12),
-        .hreadyout_o          (hreadyout_slave12),
-        .hresp_o              (hresp_slave12),
-        .txd_o                (uart1_txd),
-        .rxd_i                (uart1_rxd),
-        .swap_o               (uart1_swap),
-        .txd_output_enabled_o (uart1_txd_output_enabled),
-        .rxd_output_enabled_o (uart1_rxd_output_enabled)
-    );
-
-    /* AHB slave device 13: UART 2 */
-    tuart_top uart2 (
-        .hclk_i               (hclk_slave13),
-        .hreset_n_i           (hreset_n_slave13),
-        .hsel_i               (hsel_slave13),
-        .haddr_i              (haddr_slave13),
-        .hwdata_i             (hwdata_slave13),
-        .hwrite_i             (hwrite_slave13),
-        .htrans_i             (htrans_slave13),
-        .hsize_i              (hsize_slave13),
-        .hready_i             (hready_slave13),
-        .hburst_i             (hburst_slave13),
-        .hprot_i              (hprot_slave13),
-        .hmastlock_i          (hmastlock_slave13),
-        .hrdata_o             (hrdata_slave13),
-        .hreadyout_o          (hreadyout_slave13),
-        .hresp_o              (hresp_slave13),
-        .txd_o                (uart2_txd),
-        .rxd_i                (uart2_rxd),
-        .swap_o               (uart2_swap),
-        .txd_output_enabled_o (uart2_txd_output_enabled),
-        .rxd_output_enabled_o (uart2_rxd_output_enabled)
-    );
-
-    /* AHB slave device 14: TUART 1 */
-    tuart_top tuart1 (
-        .hclk_i               (hclk_slave14),
-        .hreset_n_i           (hreset_n_slave14),
-        .hsel_i               (hsel_slave14),
-        .haddr_i              (haddr_slave14),
-        .hwdata_i             (hwdata_slave14),
-        .hwrite_i             (hwrite_slave14),
-        .htrans_i             (htrans_slave14),
-        .hsize_i              (hsize_slave14),
-        .hready_i             (hready_slave14),
-        .hburst_i             (hburst_slave14),
-        .hprot_i              (hprot_slave14),
-        .hmastlock_i          (hmastlock_slave14),
-        .hrdata_o             (hrdata_slave14),
-        .hreadyout_o          (hreadyout_slave14),
-        .hresp_o              (hresp_slave14),
-        .txd_o                (tuart1_txd),
-        .rxd_i                (tuart1_rxd),
-        .swap_o               (tuart1_swap),
-        .txd_output_enabled_o (tuart1_txd_output_enabled),
-        .rxd_output_enabled_o (tuart1_rxd_output_enabled)
-    );
-
 endmodule

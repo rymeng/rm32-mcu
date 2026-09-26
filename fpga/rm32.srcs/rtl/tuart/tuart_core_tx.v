@@ -1,394 +1,450 @@
 `timescale 1ns / 1ps
 
 module tuart_core_tx (
-/* Clock & Reset */
-    input  wire         clock_i,
-    input  wire         reset_n_i,
-/* Write strobe */
-    input  wire         tx_data_write_strobe_i,
-/* BRR */
-    input  wire   [5:0] oversampling_rate_i,
-    input  wire  [15:0] baud_divisor_i,
-/* CR1 */
-    input  wire   [2:0] data_length_i,
-    input  wire         parity_enable_i,
+    input  wire         clk_i,
+    input  wire         rst_n_i,
+    input  wire         tx_en_i,
+    input  wire   [7:0] data_i,
+    input  wire         data_write_strobe_i,
+    input  wire   [5:0] osr_i,
+    input  wire  [15:0] div_i,
+    input  wire   [2:0] data_bits_i,
+    input  wire         parity_en_i,
     input  wire         parity_type_i,
-    input  wire         stop_length_i,
-/* CR2 */
-    input  wire         tx_enable_i,
-/* NICRx */
-    input  wire  [31:0] tx_start_noise_index_i,
-    input  wire [255:0] tx_data_noise_index_i,
-    input  wire  [31:0] tx_parity_noise_index_i,
-    input  wire  [63:0] tx_stop_noise_index_i,
-/* TDR */
-    input  wire         tx_noise_injection_enable_i,
-    input  wire         tx_parity_error_injection_enable_i,
-    input  wire   [1:0] tx_frame_error_injection_enable_i,
-    input  wire   [7:0] tx_data_i,
-/* SR1 */
-    output wire         tx_data_register_empty_o,
-/* Bus */
-    output reg          txd_o
+    input  wire         stop_bits_i,
+    input  wire  [31:0] start_bit_noise_idx_i,
+    input  wire [255:0] data_bit_noise_idx_i,
+    input  wire  [31:0] parity_code_noise_idx_i,
+    input  wire  [63:0] stop_bit_noise_idx_i,
+    input  wire         noise_injection_en_i,
+    input  wire         parity_err_injection_en_i,
+    input  wire   [1:0] frame_err_injection_en_i,
+    output wire         data_reg_empty_o,
+    output wire         xfer_complete_o,
+    output wire         txd_o
 );
+    /* FSM state */
+    reg [4:0] state;
 
-    /* Lock band parameter data */
-    reg  [5:0] oversampling_rate;
-    reg [15:0] baud_divisor;
-    always @ (posedge clock_i or negedge reset_n_i) begin
-        if (!reset_n_i) begin
-            oversampling_rate <= 6'h08;
-            baud_divisor      <= 16'h0001;
-        end else if (!tx_enable_i) begin
-            oversampling_rate <= oversampling_rate_i;
-            baud_divisor      <= baud_divisor_i;
+    localparam IDLE   = 5'b00001;
+    localparam START  = 5'b00010;
+    localparam DATA   = 5'b00100;
+    localparam PARITY = 5'b01000;
+    localparam STOP   = 5'b10000;
+
+    /* Lock band rate parameter */
+    reg  [5:0] osr;
+    reg [15:0] div;
+
+    always @ (posedge clk_i or negedge rst_n_i) begin
+        if (!rst_n_i) begin
+            osr <= 6'h08;
+            div <= 16'h0001;
+        end else if (!tx_en_i && state == IDLE) begin
+            osr <= osr_i;
+            div <= div_i;
         end
     end
 
     /* Generate tick */
+    wire  [5:0] osr_calib;
+    wire [15:0] div_calib;
     wire        sampling_tick;
-    wire [5: 0] oversampling_rate_calib;
-    tuart_baud_generator uart_baud_generator_inst (
-        .clk_i                     (clock_i),
-        .rst_n_i                   (reset_n_i),
-        .oversampling_rate_i       (oversampling_rate),
-        .baud_divisor_i            (baud_divisor),
-        .oversampling_rate_calib_o (oversampling_rate_calib),
-        .baud_divisor_calib_o      (),
-        .sampling_tick_o           (sampling_tick),
-        .bit_tick_o                ()
+    wire        bit_tick;
+
+    tuart_baud_generator tuart_tx_baud_generator (
+        .clk_i           (clk_i),
+        .rst_n_i         (rst_n_i),
+        .osr_i           (osr),
+        .div_i           (div),
+        .osr_calib_o     (osr_calib),
+        .div_calib_o     (div_calib),
+        .sampling_tick_o (sampling_tick),
+        .bit_tick_o      (bit_tick)
     );
 
-    /* Lock communication parameters */
-    reg [2:0] data_length;
-    reg       parity_enable;
+    /* Lock frame format parameters */
+    reg [2:0] data_bits;
+    reg       parity_en;
     reg       parity_type;
-    reg       stop_length;
-    always @ (posedge clock_i or negedge reset_n_i) begin
-        if (!reset_n_i) begin
-            data_length   <= 3'b111;
-            parity_enable <= 1'b0;
-            parity_type   <= 1'b0;
-            stop_length   <= 1'b0;
-        end else if (!tx_enable_i) begin
-            data_length   <= data_length_i;
-            parity_enable <= parity_enable_i;
-            parity_type   <= parity_type_i;
-            stop_length   <= stop_length_i;
+    reg       stop_bits;
+
+    always @ (posedge clk_i or negedge rst_n_i) begin
+        if (!rst_n_i) begin
+            data_bits <= 3'b111;
+            parity_en <= 1'b0;
+            parity_type <= 1'b0;
+            stop_bits <= 1'b0;
+        end else begin
+            if (!tx_en_i && state == IDLE) begin
+                data_bits <= data_bits_i;
+                parity_en <= parity_en_i;
+                parity_type <= parity_type_i;
+                stop_bits <= stop_bits_i;
+            end
         end
     end
 
     /* Create frame */
-    reg   [7:0] data_register;
-    reg  [11:0] frame_register;
-    wire        parity_bit;
-    assign parity_bit = ^(data_register & (8'hFF >> (3'h7 - data_length))) ^ (~parity_type);
+    reg  [7:0] data_reg;
+    reg [11:0] frame_reg;
+    reg        parity_code;
+
     always @ (*) begin
-        case (data_length)
+        parity_code =
+            ^(data_reg & (8'hFF >> (3'h7 - data_bits))) ^ (~parity_type);
+    end
+
+    always @ (*) begin
+        case (data_bits)
             3'b000: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 7'b0, data_register[0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 7'b0, data_register[0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 7'b0, data_register[0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 7'b0, data_register[0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 7'b0, data_reg[0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 7'b0, data_reg[0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 7'b0, data_reg[0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 7'b0, data_reg[0], 1'b0};
+                    end
+                endcase
             end
             3'b001: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 6'b0, data_register[1:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 6'b0, data_register[1:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 6'b0, data_register[1:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 6'b0, data_register[1:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 6'b0, data_reg[1:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 6'b0, data_reg[1:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 6'b0, data_reg[1:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 6'b0, data_reg[1:0], 1'b0};
+                    end
+                endcase
             end
             3'b010: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 5'b0, data_register[2:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 5'b0, data_register[2:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 5'b0, data_register[2:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 5'b0, data_register[2:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 5'b0, data_reg[2:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 5'b0, data_reg[2:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 5'b0, data_reg[2:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 5'b0, data_reg[2:0], 1'b0};
+                    end
+                endcase
             end
             3'b011: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 4'b0, data_register[3:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 4'b0, data_register[3:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 4'b0, data_register[3:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 4'b0, data_register[3:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 4'b0, data_reg[3:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 4'b0, data_reg[3:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 4'b0, data_reg[3:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 4'b0, data_reg[3:0], 1'b0};
+                    end
+                endcase
             end
             3'b100: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 3'b0, data_register[4:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 3'b0, data_register[4:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 3'b0, data_register[4:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 3'b0, data_register[4:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 3'b0, data_reg[4:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 3'b0, data_reg[4:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 3'b0, data_reg[4:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 3'b0, data_reg[4:0], 1'b0};
+                    end
+                endcase
             end
             3'b101: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 2'b0, data_register[5:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 2'b0, data_register[5:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 2'b0, data_register[5:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 2'b0, data_register[5:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 2'b0, data_reg[5:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 2'b0, data_reg[5:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 2'b0, data_reg[5:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 2'b0, data_reg[5:0], 1'b0};
+                    end
+                endcase
             end
             3'b110: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, 1'b0, data_register[6:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, 1'b0, data_register[6:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, 1'b0, data_register[6:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, 1'b0, data_register[6:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, 1'b0, data_reg[6:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, 1'b0, data_reg[6:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, 1'b0, data_reg[6:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, 1'b0, data_reg[6:0], 1'b0};
+                    end
+                endcase
             end
             3'b111: begin
-                if (parity_enable) begin
-                    if (stop_length)
-                        frame_register = {2'b11, parity_bit, data_register[7:0], 1'b0};
-                    else
-                        frame_register = {2'b01, parity_bit, data_register[7:0], 1'b0};
-                end else begin
-                    if (stop_length)
-                        frame_register = {2'b11, 1'b0, data_register[7:0], 1'b0};
-                    else
-                        frame_register = {2'b01, 1'b0, data_register[7:0], 1'b0};
-                end
+                case ({stop_bits, parity_en})
+                    2'b00: begin
+                        frame_reg =
+                            {2'b01, 1'b0, data_reg[7:0], 1'b0};
+                    end
+                    2'b01: begin
+                        frame_reg =
+                            {2'b01, parity_code, data_reg[7:0], 1'b0};
+                    end
+                    2'b10: begin
+                        frame_reg =
+                            {2'b11, 1'b0, data_reg[7:0], 1'b0};
+                    end
+                    2'b11: begin
+                        frame_reg =
+                            {2'b11, parity_code, data_reg[7:0], 1'b0};
+                    end
+                endcase
+            end
+            default: begin
+                frame_reg = {2'b01, 1'b0, 8'b0, 1'b0};
             end
         endcase
     end
 
-    /* Create frame with error injection */
-    reg [11:0] frame_with_error_register;
-    reg [11:0] error_injection_mask;
+    /* Create frame with error */
+    reg [11:0] err_mask;
+    reg [11:0] frame_with_err_reg;
+
     always @ (*) begin
-        error_injection_mask = 12'b0;
-        if (tx_parity_error_injection_enable_i)
-             error_injection_mask[9] = 1'b1;
-        case (tx_frame_error_injection_enable_i)
-            2'b00: begin end
-            2'b01: begin error_injection_mask[10] = 1'b1; end
-            2'b10: begin error_injection_mask[11] = 1'b1; end
-            2'b11: begin error_injection_mask[11:10] = 2'b11; end
-        endcase
-        frame_with_error_register = frame_register ^ error_injection_mask;
+        err_mask = 12'b0;
+        if (parity_err_injection_en_i)
+            err_mask[9] = 1'b1;
+        if (frame_err_injection_en_i[0])
+            err_mask[10] = 1'b1;
+        if (frame_err_injection_en_i[1])
+            err_mask[11] = 1'b1;
+    end
+
+    always @ (*) begin
+        frame_with_err_reg = frame_reg ^ err_mask;
     end
 
     /* Create sampling point sequence */
-    wire [383:0] sampling_point_register;
+    wire [383:0] sampling_point_seq_with_err_reg;
+
     genvar i;
     generate
         for (i = 0; i < 12; i = i + 1) begin
-            assign sampling_point_register[32 * i +: 32] = {32{frame_with_error_register[i]}};
+            assign sampling_point_seq_with_err_reg[32 * i +: 32] =
+                {32{frame_with_err_reg[i]}};
         end
     endgenerate
 
     /* Create sampling point sequence with noise */
-    reg [383:0] sampling_point_with_noise_register;
     reg [383:0] noise_mask;
+    reg [383:0] sampling_point_seq_with_err_with_noise_reg;
+
     always @ (*) begin
-       noise_mask = {tx_stop_noise_index_i, tx_parity_noise_index_i, tx_data_noise_index_i, tx_start_noise_index_i};
-       if (tx_noise_injection_enable_i)
-           sampling_point_with_noise_register = sampling_point_register ^ noise_mask;
-       else
-           sampling_point_with_noise_register = sampling_point_register;
+        noise_mask = {
+            stop_bit_noise_idx_i,
+            parity_code_noise_idx_i,
+            data_bit_noise_idx_i,
+            start_bit_noise_idx_i
+        };
     end
 
-    localparam IDLE   = 3'b000;
-    localparam START  = 3'b001;
-    localparam DATA   = 3'b010;
-    localparam PARITY = 3'b011;
-    localparam STOP   = 3'b100;
-
-    reg   [2:0] state;
-    reg [383:0] shift_register;
-    reg   [4:0] sampling_point_count;
-    reg   [2:0] data_bit_count;
-    reg   [1:0] stop_bit_count;
-    reg         data_register_valid;
-
-    always @ (posedge clock_i or negedge reset_n_i) begin
-        if (!reset_n_i) begin
-            /* FSM state */
-            state                <= IDLE;
-            /* Core register */
-            data_register        <= 8'b0;
-            shift_register       <= 384'b0;
-            /* Internal flag */
-            data_register_valid  <= 1'b0;
-            /* Internal counter */
-            sampling_point_count <= 5'b0;
-            data_bit_count       <= 3'b0;
-            stop_bit_count       <= 2'b0;
-            /* Bus */
-            txd_o                <= 1'b1;
+    always @ (*) begin
+        if (noise_injection_en_i) begin
+            sampling_point_seq_with_err_with_noise_reg =
+                sampling_point_seq_with_err_reg ^ noise_mask;
         end else begin
-            /* Write data register */
-            if (tx_data_write_strobe_i) begin
-                /* Write */
-                data_register        <= tx_data_i;
-                /* Refresh data register valid flag */
-                data_register_valid  <= 1'b1;
+            sampling_point_seq_with_err_with_noise_reg =
+                sampling_point_seq_with_err_reg;
+        end
+    end
+
+    /* FSM logic */
+    reg [383:0] shift_reg;
+    reg         data_reg_valid;
+    reg   [4:0] sampling_point_cnt;
+    reg   [2:0] data_bits_cnt;
+    reg   [1:0] stop_bits_cnt;
+    reg         txd;
+
+    always @ (posedge clk_i or negedge rst_n_i) begin
+        if (!rst_n_i) begin
+            state <= IDLE;
+            data_reg <= 8'b0;
+            shift_reg <= 384'b0;
+            data_reg_valid <= 1'b0;
+            sampling_point_cnt <= 5'b0;
+            data_bits_cnt <= 3'b0;
+            stop_bits_cnt <= 2'b0;
+            txd <= 1'b1;
+        end else begin
+            if (data_write_strobe_i) begin
+                data_reg <= data_i;
+                data_reg_valid <= 1'b1;
             end
 
             case (state)
                 IDLE: begin
-                    /* Refresh bus output */
-                    txd_o                    <= 1'b1;
-                    if (tx_enable_i && data_register_valid) begin
-                        /* Load shift register */
-                        shift_register       <= sampling_point_with_noise_register;
-                        /* Change FSM state */
-                        state                <= START;
-                        /* Refresh data register valid flag */
-                        data_register_valid  <= 1'b0;
-                        /* Initialize all internal counter */
-                        sampling_point_count <= 5'b0;
-                        data_bit_count       <= 3'b0;
-                        stop_bit_count       <= 2'b0;
+                    if (tx_en_i && data_reg_valid) begin
+                        state <= START;
+                        shift_reg <= sampling_point_seq_with_err_with_noise_reg;
+                        if (!data_write_strobe_i) begin
+                            data_reg_valid <= 1'b0;
+                        end
+                        sampling_point_cnt <= 5'b0;
+                        data_bits_cnt <= 3'b0;
+                        stop_bits_cnt <= 2'b0;
                     end
+                    txd <= 1'b1;
                 end
 
                 START: begin
                     if (sampling_tick) begin
-                        /* Refresh bus output */
-                        txd_o                    <= shift_register[sampling_point_count];
-                        if (sampling_point_count == oversampling_rate_calib - 1) begin
-                            /* Reset sampling point counter */
-                            sampling_point_count <= 5'b0;
-                            /* Change FSM state */
-                            state                <= DATA;
-                            /* Initialize data bit counter */
-                            data_bit_count       <= 3'b0;
+                        if (sampling_point_cnt == osr_calib - 1) begin
+                            state <= DATA;
+                            sampling_point_cnt <= 5'b0;
+                            data_bits_cnt <= 3'b0;
                         end else begin
-                            /* Add sampling point counter */
-                            sampling_point_count <= sampling_point_count + 1;
+                            sampling_point_cnt <= sampling_point_cnt + 1;
                         end
+                        txd <= shift_reg[sampling_point_cnt];
                     end
                 end
 
                 DATA: begin
                     if (sampling_tick) begin
-                        /* Refresh bus output */
-                        txd_o                      <= shift_register[((1 + data_bit_count) << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate_calib - 1) begin
-                            /* Reset sampling point counter */
-                            sampling_point_count   <= 5'b0;
-                            if (data_bit_count == data_length) begin
-                                if (parity_enable)
-                                    /* NOT change FSM state */
-                                    state          <= PARITY;
+                        if (sampling_point_cnt == osr_calib - 1) begin
+                            if (data_bits_cnt == data_bits) begin
+                                if (parity_en)
+                                    state <= PARITY;
                                 else begin
-                                    /* Change FSM state */
-                                    state          <= STOP;
-                                    /* Initialize stop bit counter */
-                                    stop_bit_count <= 2'b0;
+                                    state <= STOP;
+                                    stop_bits_cnt <= 2'b0;
                                 end
-                            end else
-                                /* Add data bit counter */
-                                data_bit_count     <= data_bit_count + 1;
+                            end else begin
+                                data_bits_cnt <= data_bits_cnt + 1;
+                            end
+                            sampling_point_cnt <= 5'b0;
                         end else begin
-                            /* Add sampling point counter */
-                            sampling_point_count   <= sampling_point_count + 1;
+                            sampling_point_cnt <= sampling_point_cnt + 1;
                         end
+                        txd <= shift_reg[
+                            ((1 + data_bits_cnt) << 5) + sampling_point_cnt
+                        ];
                     end
                 end
 
                 PARITY : begin
                     if (sampling_tick) begin
-                        /* Refresh bus output */
-                        txd_o                    <= shift_register[(9 << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate_calib - 1) begin
-                            /* Reset sampling point counter */
-                            sampling_point_count <= 5'b0;
-                            /* Change FSM state */
-                            state                <= STOP;
-                            /* Initialize stop bit counter */
-                            stop_bit_count       <= 2'b0;
+                        if (sampling_point_cnt == osr_calib - 1) begin
+                            state <= STOP;
+                            sampling_point_cnt <= 5'b0;
+                            stop_bits_cnt <= 2'b0;
                         end else begin
-                            /* Add sampling point counter */
-                            sampling_point_count <= sampling_point_count + 1;
+                            sampling_point_cnt <= sampling_point_cnt + 1;
                         end
+                        txd <= shift_reg[(9 << 5) + sampling_point_cnt];
                     end
                 end
 
                 STOP : begin
                     if (sampling_tick) begin
-                        /* Refresh bus output */
-                        txd_o                           <= shift_register[((10 + stop_bit_count) << 5) + sampling_point_count];
-                        if (sampling_point_count == oversampling_rate_calib - 1) begin
-                            /* Reset sampling point counter */
-                            sampling_point_count        <= 5'b0;
-                            if (stop_bit_count == stop_length) begin
-                                if (tx_enable_i && data_register_valid) begin
-                                    /* Load shift register */
-                                    shift_register      <= sampling_point_with_noise_register;
-                                    /* Change FSM state */
-                                    state               <= START;
-                                    /* Refresh data register valid flag */
-                                    data_register_valid <= 1'b0;
-                                    /* Initialize all internal counter */
-                                    data_bit_count      <= 3'b0;
-                                    stop_bit_count      <= 2'b0;
+                        if (sampling_point_cnt == osr_calib - 1) begin
+                            if (stop_bits_cnt == stop_bits) begin
+                                if (tx_en_i && data_reg_valid) begin
+                                    state <= START;
+                                    shift_reg <= sampling_point_seq_with_err_with_noise_reg;
+                                    if (!data_write_strobe_i) begin
+                                        data_reg_valid <= 1'b0;
+                                    end
+                                    data_bits_cnt <= 3'b0;
+                                    stop_bits_cnt <= 2'b0;
                                 end else begin
-                                    /* Change FSM state */
-                                    state               <= IDLE;
+                                    state <= IDLE;
                                 end
                             end else begin
-                                /* Add stop bit counter */
-                                stop_bit_count          <= stop_bit_count + 1;
+                                stop_bits_cnt <= stop_bits_cnt + 1;
                             end
+                            sampling_point_cnt <= 5'b0;
                         end else begin
-                            /* Add sampling point counter */
-                            sampling_point_count        <= sampling_point_count + 1;
+                            sampling_point_cnt <= sampling_point_cnt + 1;
                         end
+                        txd <= shift_reg[
+                            ((10 + stop_bits_cnt) << 5) + sampling_point_cnt
+                        ];
                     end
                 end
 
                 default: begin
-                    /* Refresh bus output */
-                    txd_o <= 1'b1;
-                    /* Correct FSM state */
                     state <= IDLE;
+                    txd <= 1'b1;
                 end
             endcase
         end
     end
 
-    /* Output SR1 data register empty flag*/
-    assign tx_data_register_empty_o = ~data_register_valid;
+    /* Output data register empty flag */
+    assign data_reg_empty_o = ~data_reg_valid;
+
+    /* Output transfer complete flag */
+    assign xfer_complete_o = ~data_reg_valid && (state == IDLE);
+
+    /* Output TXD */
+    assign txd_o = txd;
 endmodule

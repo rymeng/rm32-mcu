@@ -2,6 +2,7 @@
 **/.Xil
 **/*.cache
 **/*.hw
+**/*.ip_user_files
 **/*.runs
 **/*.sim
 *.dcp
@@ -37,3 +38,6 @@ CORTEXM0INTEGRATION.v
 # J-Link
 JLinkLog.txt
 JLinkSettings.ini
+
+# Agent
+**/.dsh

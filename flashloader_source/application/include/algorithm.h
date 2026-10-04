@@ -8,8 +8,8 @@ extern "C" {
 #include <stdint.h>
 #include "rm32.h"
 
-#define ERASE_SIZE                                (400UL)
-#define PROGRAM_SIZE                              (4UL)
+#define ERASE_SIZE                                (0x400UL)
+#define PROGRAM_SIZE                              (0x8UL)
 #define PROGRAM_CHUNK_SIZE                        (PROGRAM_SIZE * 128UL)
 
 #define ERASE_TIMEOUT                             (5000UL)

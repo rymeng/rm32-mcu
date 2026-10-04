@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module bram_top #(
+module sram_model_top #(
     parameter ADDR_WIDTH = 8
 )(
 /* AHB slave device interface */
@@ -106,7 +106,7 @@ module bram_top #(
     localparam ADDR_LIMIT = 1 << ADDR_WIDTH;
 
     /* Memory unit */
-    (* ram_style = "block" *) reg [31:0] unit [0:(ADDR_LIMIT - 1)];
+    (* ram_style = "block", ram_decomp = "power" *) reg [31:0] unit [0:(ADDR_LIMIT - 1)];
 
     /* Store the data at the end of data phase */
     always @ (posedge hclk_i) begin

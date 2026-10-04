@@ -1,10 +1,11 @@
 `timescale 1ns / 1ps
 
-/* Case: the data phase of the other slave overlaps this slave (D2)
-   A zero wait state slave keeps this slave at zero wait, and a delayed
-   data phase holds the bus low without breaking this slave address phase */
+/* Case: write burst timing
+   An INCR4 word write burst and an INCR4 byte write burst that covers one
+   single word in four beats. Both run at zero wait, and reading that word
+   back right after the byte burst returns the merged bytes and waits once */
 
-module tb_bram_top_other_slave_data_phase;
+module tb_sram_model_top_burst_write;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -20,19 +21,18 @@ module tb_bram_top_other_slave_data_phase;
     localparam logic [1: 0] TRANS_NONSEQ = 2'b10;
     localparam logic [1: 0] TRANS_SEQ    = 2'b11;
 
+    /* Data size */
     localparam logic [2: 0] SIZE_BYTE    = 3'b000;
     localparam logic [2: 0] SIZE_HALF    = 3'b001;
     localparam logic [2: 0] SIZE_WORD    = 3'b010;
 
+    /* Burst length */
     localparam logic [2: 0] BURST_SINGLE = 3'b000;
+    localparam logic [2: 0] BURST_INCR4  = 3'b011;
 
     int error_count = 0;
     int stall_count = 0;
 
-    /* Wait cycles inserted by the other slave, filled during the run */
-    int other_stall_seen = 0;
-
-    /* DUT port signals */
     logic         hclk        = 1'b0;
     logic         hreset_n    = 1'b0;
     logic         hsel;
@@ -49,7 +49,7 @@ module tb_bram_top_other_slave_data_phase;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -116,7 +116,9 @@ module tb_bram_top_other_slave_data_phase;
     assign hprot     = 4'b0001;
     assign hmastlock = 1'b0;
 
-    /* Model the bus matrix: the read channel is muxed by a registered select */
+    /* Model the bus matrix: the read channel is muxed by a registered
+       select, so a data phase takes the response of the slave that was
+       selected one cycle earlier */
     logic bram_phase_sel = 1'b1;
 
     always_ff @(posedge hclk or negedge hreset_n) begin
@@ -127,48 +129,14 @@ module tb_bram_top_other_slave_data_phase;
         end
     end
 
-    /* Another slave: a set other_stall_req delays its next data phase */
     logic other_hsel_comb;
     logic other_hreadyout;
-    logic other_stall_req  = 1'b0;
-    logic other_stall_q    = 1'b0;
-    logic other_phase_sel  = 1'b0;
-    logic other_data_phase = 1'b0;
-    int   other_done_count = 0;
 
     assign other_hsel_comb = (a_addr >= OTHER_BASE) &&
                              (a_addr <= OTHER_LIMIT);
-    assign other_hreadyout = other_stall_q ? 1'b0 : 1'b1;
-
-    always_ff @(posedge hclk or negedge hreset_n) begin
-        if (!hreset_n) begin
-            other_stall_q    <= 1'b0;
-            other_phase_sel  <= 1'b0;
-            other_data_phase <= 1'b0;
-            other_done_count <= 0;
-        end else begin
-            other_stall_q <= other_stall_req;
-
-            if (hready) begin
-                if (other_data_phase) begin
-                    other_done_count <= other_done_count + 1;
-                end
-
-                other_phase_sel  <= other_hsel_comb;
-                other_data_phase <= other_hsel_comb &&
-                                    (htrans != TRANS_IDLE);
-            end
-        end
-    end
+    assign other_hreadyout = 1'b1;
 
     assign hready = bram_phase_sel ? hreadyout : other_hreadyout;
-
-    /* Count the cycles where the bus is held low by the other slave */
-    always @(posedge hclk) begin
-        if (hreset_n === 1'b1 && hready === 1'b0 && hreadyout === 1'b1) begin
-            other_stall_seen++;
-        end
-    end
 
     /* Update the reference model, AHB byte lane rules applied */
     task automatic apply_write(input logic [31: 0] addr,
@@ -204,11 +172,7 @@ module tb_bram_top_other_slave_data_phase;
         word_index = addr[(ADDR_WIDTH + 1): 2];
         expected   = ref_mem[word_index];
 
-        if ((addr < BRAM_BASE) || (addr > BRAM_LIMIT)) begin
-            /* Another slave owns this address, no data to compare */
-            $display("[%0t] INFO read  %08h size %0d other slave",
-                     $time, addr, size);
-        end else if (rdata !== expected) begin
+        if (rdata !== expected) begin
             error_count++;
             $display("[%0t] FAIL read %08h size %0d got %08h exp %08h",
                      $time, addr, size, rdata, expected);
@@ -297,6 +261,44 @@ module tb_bram_top_other_slave_data_phase;
         push_beat(addr, 32'h0, size, 1'b0, BURST_SINGLE, TRANS_NONSEQ);
     endtask
 
+    /* Burst write: NONSEQ on the first beat, SEQ afterwards, the address
+       steps one word per beat */
+    task automatic push_burst_write(input logic [31: 0] base,
+                                    input int beats,
+                                    input logic [2: 0] burst,
+                                    input logic [31: 0] first_data);
+        int i;
+        for (i = 0; i < beats; i++) begin
+            push_beat(base + 4 * i, first_data + i, SIZE_WORD, 1'b1, burst,
+                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
+        end
+    endtask
+
+    /* Narrow write burst: four bytes onto one word, one byte lane each */
+    task automatic push_burst_byte_write(input logic [31: 0] base,
+                                         input logic [2: 0] burst);
+        push_beat(base + 0, 32'h0000_00A1, SIZE_BYTE, 1'b1, burst,
+                  TRANS_NONSEQ);
+        push_beat(base + 1, 32'h0000_A200, SIZE_BYTE, 1'b1, burst,
+                  TRANS_SEQ);
+        push_beat(base + 2, 32'h00A3_0000, SIZE_BYTE, 1'b1, burst,
+                  TRANS_SEQ);
+        push_beat(base + 3, 32'hA400_0000, SIZE_BYTE, 1'b1, burst,
+                  TRANS_SEQ);
+    endtask
+
+    /* Burst read: NONSEQ on the first beat, SEQ afterwards, the address
+       steps one word per beat */
+    task automatic push_burst_read(input logic [31: 0] base,
+                                   input int beats,
+                                   input logic [2: 0] burst);
+        int i;
+        for (i = 0; i < beats; i++) begin
+            push_beat(base + 4 * i, 32'h0, SIZE_WORD, 1'b0, burst,
+                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
+        end
+    endtask
+
     /* Wait for the beats to finish, with a timeout guard */
     task automatic wait_done(input int n, input int timeout_cycles = 2000);
         int cycles = 0;
@@ -312,30 +314,12 @@ module tb_bram_top_other_slave_data_phase;
         end
     endtask
 
-    /* Wait for the n th address phase of the other slave */
-    task automatic wait_other_addr_phase(input int n);
-        int   seen = 0;
-        logic prev = 1'b0;
-        logic now;
-
-        while (seen < n) begin
-            @(negedge hclk);
-            now = (other_hsel_comb === 1'b1) && (htrans !== TRANS_IDLE);
-
-            if (now && !prev) begin
-                seen++;
-            end
-
-            prev = now;
-        end
-    endtask
-
-    /* Stimulus: the third access of the other slave is delayed by one
-       wait cycle, the first two run at zero wait state */
+    /* Stimulus: burst write then read back, both word and byte bursts */
     initial begin
+        int i;
+
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
-            dut.unit[i] = 32'b0;
         end
 
         hreset_n = 1'b0;
@@ -344,40 +328,23 @@ module tb_bram_top_other_slave_data_phase;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        push_write(32'h0000_0200, 32'hAAAA_5555, SIZE_WORD);
-        push_write(32'h0000_0204, 32'hBBBB_6666, SIZE_WORD);
-        push_write(32'h0000_0208, 32'hCCCC_7777, SIZE_WORD);
+        /* Read the word burst back: the first read does not hit the word
+           written by the last beat, so no wait cycle is allowed */
+        push_burst_write(32'h0000_2000, 4, BURST_INCR4, 32'h2000_0000);
+        push_burst_read (32'h0000_2000, 4, BURST_INCR4);
 
-        /* The other slave runs at zero wait, its data phase shares the
-           cycle with the address phase of this slave */
-        push_read (32'h4000_0000, SIZE_WORD);
-        push_read (32'h0000_0200, SIZE_WORD);
+        /* The byte burst covers one word, then that word is read back */
+        push_burst_byte_write(32'h0000_2100, BURST_INCR4);
+        push_read(32'h0000_2100, SIZE_WORD);
 
-        push_read (32'h4000_0004, SIZE_WORD);
-        push_read (32'h0000_0204, SIZE_WORD);
-
-        /* Third access of the other slave: inject one wait cycle when it
-           enters its address phase */
-        push_read (32'h4000_0008, SIZE_WORD);
-        push_read (32'h0000_0208, SIZE_WORD);
-
-        wait_other_addr_phase(3);
-        other_stall_req = 1'b1;
-        @(negedge hclk);
-        other_stall_req = 1'b0;
-
-        wait_done(9);
-        check_int("stall count", stall_count, 0);
-        check_int("other stall seen", other_stall_seen, 1);
-        check_int("other slave beats", other_done_count, 3);
+        wait_done(13);
+        check_int("stall count", stall_count, 1);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED ====");
-            $display("tb_bram_top_other_slave_data_phase");
+            $display("==== TEST PASSED : tb_sram_model_top_burst_write ====");
         end else begin
-            $display("==== TEST FAILED ====");
-            $display("tb_bram_top_other_slave_data_phase %0d errors",
+            $display("==== TEST FAILED : tb_sram_model_top_burst_write, %0d ====",
                      error_count);
         end
 

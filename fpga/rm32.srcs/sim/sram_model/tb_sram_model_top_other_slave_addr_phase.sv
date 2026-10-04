@@ -1,10 +1,11 @@
 `timescale 1ns / 1ps
 
-/* Case: read right after a write to the same word
-   The read must return the new data and insert exactly one wait cycle;
-   different addresses, read then write and write then write insert none */
+/* Case: the data phase overlaps an address phase of another slave (D1)
+   The read data phase of this slave may share a cycle with an address
+   phase that targets another slave. That cycle must not make this slave
+   insert a wait cycle, and its read data must still be taken correctly */
 
-module tb_bram_top_same_word_wr_rd;
+module tb_sram_model_top_other_slave_addr_phase;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -46,7 +47,7 @@ module tb_bram_top_same_word_wr_rd;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -114,8 +115,8 @@ module tb_bram_top_same_word_wr_rd;
     assign hmastlock = 1'b0;
 
     /* Model the bus matrix: the read channel is muxed by a registered
-       select, so a data phase takes the response of the slave that was
-       selected one cycle earlier */
+       select, so an address phase of another slave can share a cycle with
+       a data phase of this slave without breaking the select */
     logic bram_phase_sel = 1'b1;
 
     always_ff @(posedge hclk or negedge hreset_n) begin
@@ -126,13 +127,31 @@ module tb_bram_top_same_word_wr_rd;
         end
     end
 
-    /* Another slave: zero wait state */
+    /* Another slave: zero wait state, counts its own finished beats */
     logic other_hsel_comb;
     logic other_hreadyout;
+    logic other_phase_sel  = 1'b0;
+    logic other_data_phase = 1'b0;
+    int   other_done_count = 0;
 
     assign other_hsel_comb = (a_addr >= OTHER_BASE) &&
                              (a_addr <= OTHER_LIMIT);
     assign other_hreadyout = 1'b1;
+
+    always_ff @(posedge hclk or negedge hreset_n) begin
+        if (!hreset_n) begin
+            other_phase_sel  <= 1'b0;
+            other_data_phase <= 1'b0;
+            other_done_count <= 0;
+        end else if (hready) begin
+            if (other_data_phase) begin
+                other_done_count <= other_done_count + 1;
+            end
+
+            other_phase_sel  <= other_hsel_comb;
+            other_data_phase <= other_hsel_comb && (htrans != TRANS_IDLE);
+        end
+    end
 
     assign hready = bram_phase_sel ? hreadyout : other_hreadyout;
 
@@ -170,7 +189,11 @@ module tb_bram_top_same_word_wr_rd;
         word_index = addr[(ADDR_WIDTH + 1): 2];
         expected   = ref_mem[word_index];
 
-        if (rdata !== expected) begin
+        if ((addr < BRAM_BASE) || (addr > BRAM_LIMIT)) begin
+            /* Another slave owns this address, no data to compare */
+            $display("[%0t] INFO read  %08h size %0d other slave",
+                     $time, addr, size);
+        end else if (rdata !== expected) begin
             error_count++;
             $display("[%0t] FAIL read %08h size %0d got %08h exp %08h",
                      $time, addr, size, rdata, expected);
@@ -274,7 +297,7 @@ module tb_bram_top_same_word_wr_rd;
         end
     endtask
 
-    /* Beats 2, 7 and 10 read the word written one cycle earlier */
+    /* Beats 3 to 5 target the other slave and overlap this slave data */
     initial begin
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
@@ -287,32 +310,38 @@ module tb_bram_top_same_word_wr_rd;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Same word: read right after the write, new data plus one wait */
-        push_write(32'h0000_0400, 32'h1122_3344, SIZE_WORD);
-        push_read (32'h0000_0400, SIZE_WORD);
+        /* Fill in the data this slave will read back */
+        push_write(32'h0000_0100, 32'h1111_1111, SIZE_WORD);
+        push_write(32'h0000_0104, 32'h2222_2222, SIZE_WORD);
+        push_write(32'h0000_0108, 32'h3333_3333, SIZE_WORD);
 
-        /* Different word: no wait cycle allowed */
-        push_write(32'h0000_0500, 32'h5555_6666, SIZE_WORD);
-        push_read (32'h0000_0510, SIZE_WORD);
+        /* Two back to back reads: the second data phase overlaps the next
+           address phase */
+        push_read (32'h0000_0100, SIZE_WORD);
+        push_read (32'h0000_0104, SIZE_WORD);
 
-        /* Byte write then whole word read: the new byte must be visible */
-        push_write(32'h0000_0600, 32'hAABB_CCDD, SIZE_WORD);
-        push_write(32'h0000_0600, 32'h0000_00EE, SIZE_BYTE);
-        push_read (32'h0000_0600, SIZE_WORD);
+        /* The second data phase shares the cycle with the address phase
+           of another slave, the D1 case */
+        push_read (32'h4000_0000, SIZE_WORD);
 
-        /* Read then write: the read returns the old data, no wait */
-        push_read (32'h0000_0700, SIZE_WORD);
-        push_write(32'h0000_0700, 32'h0000_0099, SIZE_WORD);
-        push_read (32'h0000_0700, SIZE_WORD);
+        /* Back to back accesses to the other slave */
+        push_read (32'h4000_0004, SIZE_WORD);
 
-        wait_done(10);
-        check_int("stall count", stall_count, 3);
+        /* The data phase of the other slave shares the cycle with the
+           address phase of this slave */
+        push_read (32'h0000_0108, SIZE_WORD);
+
+        wait_done(8);
+        check_int("stall count", stall_count, 0);
+        check_int("other slave beats", other_done_count, 2);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED : tb_bram_top_same_word_wr_rd ====");
+            $display("==== TEST PASSED ====");
+            $display("tb_sram_model_top_other_slave_addr_phase");
         end else begin
-            $display("==== TEST FAILED : tb_bram_top_same_word_wr_rd, %0d ====",
+            $display("==== TEST FAILED ====");
+            $display("tb_sram_model_top_other_slave_addr_phase %0d errors",
                      error_count);
         end
 

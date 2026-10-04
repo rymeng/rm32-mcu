@@ -1,11 +1,12 @@
 `timescale 1ns / 1ps
 
-/* Case: write burst timing
-   An INCR4 word write burst and an INCR4 byte write burst that covers one
-   single word in four beats. Both run at zero wait, and reading that word
-   back right after the byte burst returns the merged bytes and waits once */
+/* Case: error response, two cycles
+   A misaligned half word, a misaligned word and an illegal size must all
+   give the AHB two cycle error response: HRESP high for two cycles with
+   HREADYOUT low on the first and high on the second. A failing access
+   must not change the stored data */
 
-module tb_bram_top_burst_write;
+module tb_sram_model_top_error_response;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -21,18 +22,20 @@ module tb_bram_top_burst_write;
     localparam logic [1: 0] TRANS_NONSEQ = 2'b10;
     localparam logic [1: 0] TRANS_SEQ    = 2'b11;
 
-    /* Data size */
     localparam logic [2: 0] SIZE_BYTE    = 3'b000;
     localparam logic [2: 0] SIZE_HALF    = 3'b001;
     localparam logic [2: 0] SIZE_WORD    = 3'b010;
 
-    /* Burst length */
     localparam logic [2: 0] BURST_SINGLE = 3'b000;
-    localparam logic [2: 0] BURST_INCR4  = 3'b011;
 
     int error_count = 0;
     int stall_count = 0;
 
+    /* Error response checker: cycle count and phase flag */
+    int   err_resp_cycles = 0;
+    logic err_resp_phase  = 1'b0;
+
+    /* DUT port signals */
     logic         hclk        = 1'b0;
     logic         hreset_n    = 1'b0;
     logic         hsel;
@@ -49,7 +52,7 @@ module tb_bram_top_burst_write;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -76,7 +79,35 @@ module tb_bram_top_burst_write;
         end
     end
 
-    /* One AHB beat driven by the master */
+    task automatic check_bool(input string name, input logic cond);
+        if (cond !== 1'b1) begin
+            error_count++;
+            $display("[%0t] FAIL %s", $time, name);
+        end
+    endtask
+
+    /* Check HRESP high for two cycles and the HREADYOUT pattern */
+    always @(posedge hclk or negedge hreset_n) begin
+        if (!hreset_n) begin
+            err_resp_cycles <= 0;
+            err_resp_phase  <= 1'b0;
+        end else if (hresp === 1'b1) begin
+            err_resp_cycles <= err_resp_cycles + 1;
+
+            if (!err_resp_phase) begin
+                check_bool("error resp cycle1 hreadyout low",
+                           hreadyout === 1'b0);
+                err_resp_phase <= 1'b1;
+            end else begin
+                check_bool("error resp cycle2 hreadyout high",
+                           hreadyout === 1'b1);
+                err_resp_phase <= 1'b0;
+            end
+        end else begin
+            err_resp_phase <= 1'b0;
+        end
+    end
+
     typedef struct {
         logic [31: 0] addr;
         logic [31: 0] wdata;
@@ -138,7 +169,6 @@ module tb_bram_top_burst_write;
 
     assign hready = bram_phase_sel ? hreadyout : other_hreadyout;
 
-    /* Update the reference model, AHB byte lane rules applied */
     task automatic apply_write(input logic [31: 0] addr,
                                input logic [31: 0] wdata,
                                input logic  [2: 0] size);
@@ -163,7 +193,6 @@ module tb_bram_top_burst_write;
         endcase
     endtask
 
-    /* Compare read data, this slave returns the whole word */
     task automatic check_read(input logic [31: 0] addr,
                               input logic  [2: 0] size,
                               input logic [31: 0] rdata);
@@ -193,7 +222,6 @@ module tb_bram_top_burst_write;
         end
     endtask
 
-    /* Master pipeline: address and data phase, extended by wait cycles */
     always @(posedge hclk or negedge hreset_n) begin
         if (!hreset_n) begin
             a_idle     <= 1'b1;
@@ -234,7 +262,6 @@ module tb_bram_top_burst_write;
         end
     end
 
-    /* Push one beat into the master command queue */
     task automatic push_beat(input logic [31: 0] addr,
                              input logic [31: 0] wdata,
                              input logic  [2: 0] size,
@@ -261,45 +288,6 @@ module tb_bram_top_burst_write;
         push_beat(addr, 32'h0, size, 1'b0, BURST_SINGLE, TRANS_NONSEQ);
     endtask
 
-    /* Burst write: NONSEQ on the first beat, SEQ afterwards, the address
-       steps one word per beat */
-    task automatic push_burst_write(input logic [31: 0] base,
-                                    input int beats,
-                                    input logic [2: 0] burst,
-                                    input logic [31: 0] first_data);
-        int i;
-        for (i = 0; i < beats; i++) begin
-            push_beat(base + 4 * i, first_data + i, SIZE_WORD, 1'b1, burst,
-                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
-        end
-    endtask
-
-    /* Narrow write burst: four bytes onto one word, one byte lane each */
-    task automatic push_burst_byte_write(input logic [31: 0] base,
-                                         input logic [2: 0] burst);
-        push_beat(base + 0, 32'h0000_00A1, SIZE_BYTE, 1'b1, burst,
-                  TRANS_NONSEQ);
-        push_beat(base + 1, 32'h0000_A200, SIZE_BYTE, 1'b1, burst,
-                  TRANS_SEQ);
-        push_beat(base + 2, 32'h00A3_0000, SIZE_BYTE, 1'b1, burst,
-                  TRANS_SEQ);
-        push_beat(base + 3, 32'hA400_0000, SIZE_BYTE, 1'b1, burst,
-                  TRANS_SEQ);
-    endtask
-
-    /* Burst read: NONSEQ on the first beat, SEQ afterwards, the address
-       steps one word per beat */
-    task automatic push_burst_read(input logic [31: 0] base,
-                                   input int beats,
-                                   input logic [2: 0] burst);
-        int i;
-        for (i = 0; i < beats; i++) begin
-            push_beat(base + 4 * i, 32'h0, SIZE_WORD, 1'b0, burst,
-                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
-        end
-    endtask
-
-    /* Wait for the beats to finish, with a timeout guard */
     task automatic wait_done(input int n, input int timeout_cycles = 2000);
         int cycles = 0;
         while (done_count < n && cycles < timeout_cycles) begin
@@ -314,10 +302,8 @@ module tb_bram_top_burst_write;
         end
     endtask
 
-    /* Stimulus: burst write then read back, both word and byte bursts */
+    /* Stimulus: four failing beats, the last read checks the side effect */
     initial begin
-        int i;
-
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
         end
@@ -328,23 +314,33 @@ module tb_bram_top_burst_write;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Read the word burst back: the first read does not hit the word
-           written by the last beat, so no wait cycle is allowed */
-        push_burst_write(32'h0000_2000, 4, BURST_INCR4, 32'h2000_0000);
-        push_burst_read (32'h0000_2000, 4, BURST_INCR4);
+        /* Write one word as the reference data */
+        push_write(32'h0000_0800, 32'h1234_5678, SIZE_WORD);
 
-        /* The byte burst covers one word, then that word is read back */
-        push_burst_byte_write(32'h0000_2100, BURST_INCR4);
-        push_read(32'h0000_2100, SIZE_WORD);
+        /* Misaligned half word */
+        push_read (32'h0000_0801, SIZE_HALF);
 
-        wait_done(13);
-        check_int("stall count", stall_count, 1);
+        /* Misaligned word */
+        push_read (32'h0000_0802, SIZE_WORD);
+
+        /* Illegal size, encoding 3'b011 */
+        push_read (32'h0000_0800, 3'b011);
+
+        /* Misaligned write: the stored data must stay unchanged */
+        push_write(32'h0000_0802, 32'h0000_FFFF, SIZE_WORD);
+
+        /* Read the reference data back */
+        push_read (32'h0000_0800, SIZE_WORD);
+
+        wait_done(6);
+        check_int("stall count", stall_count, 4);
+        check_int("err resp cycles", err_resp_cycles, 8);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED : tb_bram_top_burst_write ====");
+            $display("==== TEST PASSED : tb_sram_model_top_error_response ====");
         end else begin
-            $display("==== TEST FAILED : tb_bram_top_burst_write, %0d ====",
+            $display("==== TEST FAILED : tb_sram_model_top_error_response, %0d ====",
                      error_count);
         end
 

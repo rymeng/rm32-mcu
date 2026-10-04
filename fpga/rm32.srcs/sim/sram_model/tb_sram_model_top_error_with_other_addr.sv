@@ -1,11 +1,11 @@
 `timescale 1ns / 1ps
 
-/* Case: the data phase overlaps an address phase of another slave (D1)
-   The read data phase of this slave may share a cycle with an address
-   phase that targets another slave. That cycle must not make this slave
-   insert a wait cycle, and its read data must still be taken correctly */
+/* Case: an address phase of the other slave during the error response (D3)
+   While this slave answers with the two cycle error response the bus is
+   held low. An address phase of the other slave that is presented on the
+   same cycle must not complete early, and both slaves must recover */
 
-module tb_bram_top_other_slave_addr_phase;
+module tb_sram_model_top_error_with_other_addr;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -47,7 +47,7 @@ module tb_bram_top_other_slave_addr_phase;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -74,7 +74,6 @@ module tb_bram_top_other_slave_addr_phase;
         end
     end
 
-    /* One AHB beat driven by the master */
     typedef struct {
         logic [31: 0] addr;
         logic [31: 0] wdata;
@@ -114,9 +113,7 @@ module tb_bram_top_other_slave_addr_phase;
     assign hprot     = 4'b0001;
     assign hmastlock = 1'b0;
 
-    /* Model the bus matrix: the read channel is muxed by a registered
-       select, so an address phase of another slave can share a cycle with
-       a data phase of this slave without breaking the select */
+    /* Model the bus matrix: the read channel is muxed by a registered select */
     logic bram_phase_sel = 1'b1;
 
     always_ff @(posedge hclk or negedge hreset_n) begin
@@ -154,6 +151,19 @@ module tb_bram_top_other_slave_addr_phase;
     end
 
     assign hready = bram_phase_sel ? hreadyout : other_hreadyout;
+
+    /* While the bus is held low by the error response, the other slave
+       must not finish a beat */
+    always @(posedge hclk) begin
+        if (hreset_n === 1'b1 && hresp === 1'b1 && hreadyout === 1'b0) begin
+            if (other_done_count !== 0) begin
+                error_count++;
+                $display("[%0t] FAIL other slave finished %0d beats while",
+                         $time, other_done_count);
+                $display("                  the bus was held low");
+            end
+        end
+    end
 
     /* Update the reference model, AHB byte lane rules applied */
     task automatic apply_write(input logic [31: 0] addr,
@@ -297,7 +307,8 @@ module tb_bram_top_other_slave_addr_phase;
         end
     endtask
 
-    /* Beats 3 to 5 target the other slave and overlap this slave data */
+    /* Stimulus: the other slave address phase is already on the bus while
+       this slave answers the failing access */
     initial begin
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
@@ -310,38 +321,29 @@ module tb_bram_top_other_slave_addr_phase;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Fill in the data this slave will read back */
-        push_write(32'h0000_0100, 32'h1111_1111, SIZE_WORD);
-        push_write(32'h0000_0104, 32'h2222_2222, SIZE_WORD);
-        push_write(32'h0000_0108, 32'h3333_3333, SIZE_WORD);
+        push_write(32'h0000_0900, 32'hDEAD_BEEF, SIZE_WORD);
 
-        /* Two back to back reads: the second data phase overlaps the next
-           address phase */
-        push_read (32'h0000_0100, SIZE_WORD);
-        push_read (32'h0000_0104, SIZE_WORD);
+        /* A misaligned access triggers the two cycle error response */
+        push_read (32'h0000_0901, SIZE_HALF);
 
-        /* The second data phase shares the cycle with the address phase
-           of another slave, the D1 case */
+        /* The next beat targets the other slave, its address phase lands
+           on the first cycle of the error response */
         push_read (32'h4000_0000, SIZE_WORD);
 
-        /* Back to back accesses to the other slave */
-        push_read (32'h4000_0004, SIZE_WORD);
+        /* After the error this slave reads the original data back */
+        push_read (32'h0000_0900, SIZE_WORD);
 
-        /* The data phase of the other slave shares the cycle with the
-           address phase of this slave */
-        push_read (32'h0000_0108, SIZE_WORD);
-
-        wait_done(8);
-        check_int("stall count", stall_count, 0);
-        check_int("other slave beats", other_done_count, 2);
+        wait_done(4);
+        check_int("stall count", stall_count, 1);
+        check_int("other slave beats", other_done_count, 1);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
             $display("==== TEST PASSED ====");
-            $display("tb_bram_top_other_slave_addr_phase");
+            $display("tb_sram_model_top_error_with_other_addr");
         end else begin
             $display("==== TEST FAILED ====");
-            $display("tb_bram_top_other_slave_addr_phase %0d errors",
+            $display("tb_sram_model_top_error_with_other_addr %0d errors",
                      error_count);
         end
 

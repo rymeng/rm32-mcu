@@ -1,6 +1,10 @@
 `timescale 1ns / 1ps
 
-module tb_bram_top_basic_rw;
+/* Case: read right after a write to the same word
+   The read must return the new data and insert exactly one wait cycle;
+   different addresses, read then write and write then write insert none */
+
+module tb_sram_model_top_same_word_wr_rd;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -42,7 +46,7 @@ module tb_bram_top_basic_rw;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -83,7 +87,6 @@ module tb_bram_top_basic_rw;
     ahb_beat_t    beat_tmp;
     int           done_count = 0;
 
-    /* Address phase drive registers */
     logic [31: 0] a_addr  = 32'h0;
     logic [31: 0] a_wdata = 32'h0;
     logic  [2: 0] a_size  = SIZE_WORD;
@@ -92,14 +95,12 @@ module tb_bram_top_basic_rw;
     logic  [1: 0] a_trans = TRANS_IDLE;
     logic         a_idle  = 1'b1;
 
-    /* Data phase slot: compared when the data phase ends */
     logic [31: 0] d_addr  = 32'h0;
     logic [31: 0] d_wdata = 32'h0;
     logic  [2: 0] d_size  = SIZE_WORD;
     logic         d_write = 1'b0;
     logic         d_valid = 1'b0;
 
-    /* Reference model */
     logic [31: 0] ref_mem [0:(1 << ADDR_WIDTH) - 1];
 
     assign haddr     = a_addr;
@@ -125,7 +126,7 @@ module tb_bram_top_basic_rw;
         end
     end
 
-    /* Another slave: not accessed in this case, zero wait state */
+    /* Another slave: zero wait state */
     logic other_hsel_comb;
     logic other_hreadyout;
 
@@ -247,14 +248,12 @@ module tb_bram_top_basic_rw;
         cmd_q.push_back(beat_tmp);
     endtask
 
-    /* Push a write beat */
     task automatic push_write(input logic [31: 0] addr,
                               input logic [31: 0] wdata,
                               input logic  [2: 0] size);
         push_beat(addr, wdata, size, 1'b1, BURST_SINGLE, TRANS_NONSEQ);
     endtask
 
-    /* Push a read beat */
     task automatic push_read(input logic [31: 0] addr,
                              input logic  [2: 0] size);
         push_beat(addr, 32'h0, size, 1'b0, BURST_SINGLE, TRANS_NONSEQ);
@@ -275,10 +274,11 @@ module tb_bram_top_basic_rw;
         end
     endtask
 
-    /* Stimulus */
+    /* Beats 2, 7 and 10 read the word written one cycle earlier */
     initial begin
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
+            dut.unit[i] = 32'b0;
         end
 
         hreset_n = 1'b0;
@@ -287,34 +287,32 @@ module tb_bram_top_basic_rw;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Word write, then read back */
-        push_write(32'h0000_0100, 32'hA5A5_5A5A, SIZE_WORD);
-        push_read (32'h0000_0100, SIZE_WORD);
+        /* Same word: read right after the write, new data plus one wait */
+        push_write(32'h0000_0400, 32'h1122_3344, SIZE_WORD);
+        push_read (32'h0000_0400, SIZE_WORD);
 
-        /* Two half words form one word, each on its own byte lane */
-        push_write(32'h0000_0200, 32'h0000_1234, SIZE_HALF);
-        push_write(32'h0000_0202, 32'h5678_0000, SIZE_HALF);
-        push_read (32'h0000_0200, SIZE_WORD);
+        /* Different word: no wait cycle allowed */
+        push_write(32'h0000_0500, 32'h5555_6666, SIZE_WORD);
+        push_read (32'h0000_0510, SIZE_WORD);
 
-        /* Four bytes cover the whole word, each on its own byte lane */
-        push_write(32'h0000_0300, 32'h0000_00AA, SIZE_BYTE);
-        push_write(32'h0000_0301, 32'h0000_BB00, SIZE_BYTE);
-        push_write(32'h0000_0302, 32'h00CC_0000, SIZE_BYTE);
-        push_write(32'h0000_0303, 32'hDD00_0000, SIZE_BYTE);
-        push_read (32'h0000_0300, SIZE_WORD);
+        /* Byte write then whole word read: the new byte must be visible */
+        push_write(32'h0000_0600, 32'hAABB_CCDD, SIZE_WORD);
+        push_write(32'h0000_0600, 32'h0000_00EE, SIZE_BYTE);
+        push_read (32'h0000_0600, SIZE_WORD);
 
-        /* Narrow read back */
-        push_read (32'h0000_0302, SIZE_HALF);
-        push_read (32'h0000_0303, SIZE_BYTE);
+        /* Read then write: the read returns the old data, no wait */
+        push_read (32'h0000_0700, SIZE_WORD);
+        push_write(32'h0000_0700, 32'h0000_0099, SIZE_WORD);
+        push_read (32'h0000_0700, SIZE_WORD);
 
-        wait_done(12);
+        wait_done(10);
         check_int("stall count", stall_count, 3);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED : tb_bram_top_basic_rw ====");
+            $display("==== TEST PASSED : tb_sram_model_top_same_word_wr_rd ====");
         end else begin
-            $display("==== TEST FAILED : tb_bram_top_basic_rw, %0d ====",
+            $display("==== TEST FAILED : tb_sram_model_top_same_word_wr_rd, %0d ====",
                      error_count);
         end
 

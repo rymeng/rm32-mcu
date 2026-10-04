@@ -1,10 +1,6 @@
 `timescale 1ns / 1ps
 
-/* Case: read burst timing
-   INCR4, INCR8 and an undefined length INCR read burst: every address
-   phase overlaps the previous data phase, all beats run at zero wait */
-
-module tb_bram_top_burst_read;
+module tb_sram_model_top_basic_rw;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -25,9 +21,6 @@ module tb_bram_top_burst_read;
     localparam logic [2: 0] SIZE_WORD    = 3'b010;
 
     localparam logic [2: 0] BURST_SINGLE = 3'b000;
-    localparam logic [2: 0] BURST_INCR4  = 3'b011;
-    localparam logic [2: 0] BURST_INCR8  = 3'b101;
-    localparam logic [2: 0] BURST_INCR   = 3'b001;
 
     int error_count = 0;
     int stall_count = 0;
@@ -49,7 +42,7 @@ module tb_bram_top_burst_read;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -254,27 +247,17 @@ module tb_bram_top_burst_read;
         cmd_q.push_back(beat_tmp);
     endtask
 
+    /* Push a write beat */
     task automatic push_write(input logic [31: 0] addr,
                               input logic [31: 0] wdata,
                               input logic  [2: 0] size);
         push_beat(addr, wdata, size, 1'b1, BURST_SINGLE, TRANS_NONSEQ);
     endtask
 
+    /* Push a read beat */
     task automatic push_read(input logic [31: 0] addr,
                              input logic  [2: 0] size);
         push_beat(addr, 32'h0, size, 1'b0, BURST_SINGLE, TRANS_NONSEQ);
-    endtask
-
-    /* Burst read: NONSEQ on the first beat, SEQ afterwards, the address
-       steps one word per beat */
-    task automatic push_burst_read(input logic [31: 0] base,
-                                   input int beats,
-                                   input logic [2: 0] burst);
-        int i;
-        for (i = 0; i < beats; i++) begin
-            push_beat(base + 4 * i, 32'h0, SIZE_WORD, 1'b0, burst,
-                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
-        end
     endtask
 
     /* Wait for the beats to finish, with a timeout guard */
@@ -292,10 +275,8 @@ module tb_bram_top_burst_read;
         end
     endtask
 
-    /* Stimulus: fill the data, then run INCR4, INCR8 and INCR reads */
+    /* Stimulus */
     initial begin
-        int i;
-
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
         end
@@ -306,33 +287,34 @@ module tb_bram_top_burst_read;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Data for the INCR4 read burst */
-        for (i = 0; i < 4; i++) begin
-            push_write(32'h0000_1000 + 4 * i, 32'h0101_0100 + i, SIZE_WORD);
-        end
+        /* Word write, then read back */
+        push_write(32'h0000_0100, 32'hA5A5_5A5A, SIZE_WORD);
+        push_read (32'h0000_0100, SIZE_WORD);
 
-        /* Data for the INCR8 read burst */
-        for (i = 0; i < 8; i++) begin
-            push_write(32'h0000_1100 + 4 * i, 32'hAA00_0000 + i, SIZE_WORD);
-        end
+        /* Two half words form one word, each on its own byte lane */
+        push_write(32'h0000_0200, 32'h0000_1234, SIZE_HALF);
+        push_write(32'h0000_0202, 32'h5678_0000, SIZE_HALF);
+        push_read (32'h0000_0200, SIZE_WORD);
 
-        /* Data for the undefined length INCR read burst */
-        for (i = 0; i < 4; i++) begin
-            push_write(32'h0000_1200 + 4 * i, 32'hBB00_0000 + i, SIZE_WORD);
-        end
+        /* Four bytes cover the whole word, each on its own byte lane */
+        push_write(32'h0000_0300, 32'h0000_00AA, SIZE_BYTE);
+        push_write(32'h0000_0301, 32'h0000_BB00, SIZE_BYTE);
+        push_write(32'h0000_0302, 32'h00CC_0000, SIZE_BYTE);
+        push_write(32'h0000_0303, 32'hDD00_0000, SIZE_BYTE);
+        push_read (32'h0000_0300, SIZE_WORD);
 
-        push_burst_read(32'h0000_1000, 4, BURST_INCR4);
-        push_burst_read(32'h0000_1100, 8, BURST_INCR8);
-        push_burst_read(32'h0000_1200, 4, BURST_INCR);
+        /* Narrow read back */
+        push_read (32'h0000_0302, SIZE_HALF);
+        push_read (32'h0000_0303, SIZE_BYTE);
 
-        wait_done(32);
-        check_int("stall count", stall_count, 0);
+        wait_done(12);
+        check_int("stall count", stall_count, 3);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED : tb_bram_top_burst_read ====");
+            $display("==== TEST PASSED : tb_sram_model_top_basic_rw ====");
         end else begin
-            $display("==== TEST FAILED : tb_bram_top_burst_read, %0d ====",
+            $display("==== TEST FAILED : tb_sram_model_top_basic_rw, %0d ====",
                      error_count);
         end
 

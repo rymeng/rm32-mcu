@@ -1,10 +1,10 @@
 `timescale 1ns / 1ps
 
-/* Case: wait cycle shape of a same word collision (D4)
-   A read right after a write to the same word may insert one wait cycle
-   only, never two in a row, and all later accesses must still complete */
+/* Case: read burst timing
+   INCR4, INCR8 and an undefined length INCR read burst: every address
+   phase overlaps the previous data phase, all beats run at zero wait */
 
-module tb_bram_top_collision_stall;
+module tb_sram_model_top_burst_read;
 
     localparam int CLK_PERIOD = 20;         /* 50 MHz, as in the design */
     localparam int ADDR_WIDTH = 12;         /* 16 KB memory space */
@@ -25,11 +25,12 @@ module tb_bram_top_collision_stall;
     localparam logic [2: 0] SIZE_WORD    = 3'b010;
 
     localparam logic [2: 0] BURST_SINGLE = 3'b000;
+    localparam logic [2: 0] BURST_INCR4  = 3'b011;
+    localparam logic [2: 0] BURST_INCR8  = 3'b101;
+    localparam logic [2: 0] BURST_INCR   = 3'b001;
 
     int error_count = 0;
     int stall_count = 0;
-    int stall_run     = 0;
-    int stall_run_max = 0;
 
     /* DUT port signals */
     logic         hclk        = 1'b0;
@@ -48,7 +49,7 @@ module tb_bram_top_collision_stall;
     logic         hreadyout;
     logic         hresp;
 
-    bram_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
+    sram_model_top #(.ADDR_WIDTH (ADDR_WIDTH)) dut (
         .hclk_i      (hclk),
         .hreset_n_i  (hreset_n),
         .hsel_i      (hsel),
@@ -72,16 +73,10 @@ module tb_bram_top_collision_stall;
     always @(posedge hclk) begin
         if (hreset_n === 1'b1 && hreadyout === 1'b0) begin
             stall_count++;
-            stall_run++;
-
-            if (stall_run > stall_run_max) begin
-                stall_run_max = stall_run;
-            end
-        end else begin
-            stall_run = 0;
         end
     end
 
+    /* One AHB beat driven by the master */
     typedef struct {
         logic [31: 0] addr;
         logic [31: 0] wdata;
@@ -95,6 +90,7 @@ module tb_bram_top_collision_stall;
     ahb_beat_t    beat_tmp;
     int           done_count = 0;
 
+    /* Address phase drive registers */
     logic [31: 0] a_addr  = 32'h0;
     logic [31: 0] a_wdata = 32'h0;
     logic  [2: 0] a_size  = SIZE_WORD;
@@ -103,12 +99,14 @@ module tb_bram_top_collision_stall;
     logic  [1: 0] a_trans = TRANS_IDLE;
     logic         a_idle  = 1'b1;
 
+    /* Data phase slot: compared when the data phase ends */
     logic [31: 0] d_addr  = 32'h0;
     logic [31: 0] d_wdata = 32'h0;
     logic  [2: 0] d_size  = SIZE_WORD;
     logic         d_write = 1'b0;
     logic         d_valid = 1'b0;
 
+    /* Reference model */
     logic [31: 0] ref_mem [0:(1 << ADDR_WIDTH) - 1];
 
     assign haddr     = a_addr;
@@ -134,31 +132,13 @@ module tb_bram_top_collision_stall;
         end
     end
 
-    /* Another slave: zero wait state, counts its own finished beats */
+    /* Another slave: not accessed in this case, zero wait state */
     logic other_hsel_comb;
     logic other_hreadyout;
-    logic other_phase_sel  = 1'b0;
-    logic other_data_phase = 1'b0;
-    int   other_done_count = 0;
 
     assign other_hsel_comb = (a_addr >= OTHER_BASE) &&
                              (a_addr <= OTHER_LIMIT);
     assign other_hreadyout = 1'b1;
-
-    always_ff @(posedge hclk or negedge hreset_n) begin
-        if (!hreset_n) begin
-            other_phase_sel  <= 1'b0;
-            other_data_phase <= 1'b0;
-            other_done_count <= 0;
-        end else if (hready) begin
-            if (other_data_phase) begin
-                other_done_count <= other_done_count + 1;
-            end
-
-            other_phase_sel  <= other_hsel_comb;
-            other_data_phase <= other_hsel_comb && (htrans != TRANS_IDLE);
-        end
-    end
 
     assign hready = bram_phase_sel ? hreadyout : other_hreadyout;
 
@@ -196,11 +176,7 @@ module tb_bram_top_collision_stall;
         word_index = addr[(ADDR_WIDTH + 1): 2];
         expected   = ref_mem[word_index];
 
-        if ((addr < BRAM_BASE) || (addr > BRAM_LIMIT)) begin
-            /* Another slave owns this address, no data to compare */
-            $display("[%0t] INFO read  %08h size %0d other slave",
-                     $time, addr, size);
-        end else if (rdata !== expected) begin
+        if (rdata !== expected) begin
             error_count++;
             $display("[%0t] FAIL read %08h size %0d got %08h exp %08h",
                      $time, addr, size, rdata, expected);
@@ -289,6 +265,18 @@ module tb_bram_top_collision_stall;
         push_beat(addr, 32'h0, size, 1'b0, BURST_SINGLE, TRANS_NONSEQ);
     endtask
 
+    /* Burst read: NONSEQ on the first beat, SEQ afterwards, the address
+       steps one word per beat */
+    task automatic push_burst_read(input logic [31: 0] base,
+                                   input int beats,
+                                   input logic [2: 0] burst);
+        int i;
+        for (i = 0; i < beats; i++) begin
+            push_beat(base + 4 * i, 32'h0, SIZE_WORD, 1'b0, burst,
+                      (i == 0) ? TRANS_NONSEQ : TRANS_SEQ);
+        end
+    endtask
+
     /* Wait for the beats to finish, with a timeout guard */
     task automatic wait_done(input int n, input int timeout_cycles = 2000);
         int cycles = 0;
@@ -304,12 +292,12 @@ module tb_bram_top_collision_stall;
         end
     endtask
 
-    /* Stimulus: two same word collisions, each waits one cycle, followed
-       by an access to the other slave */
+    /* Stimulus: fill the data, then run INCR4, INCR8 and INCR reads */
     initial begin
+        int i;
+
         foreach (ref_mem[i]) begin
             ref_mem[i] = 32'h0000_0000;
-            dut.unit[i] = 32'b0;
         end
 
         hreset_n = 1'b0;
@@ -318,29 +306,33 @@ module tb_bram_top_collision_stall;
         hreset_n = 1'b1;
         repeat (2) @(posedge hclk);
 
-        /* Collision 1: read right after the write of the same word */
-        push_write(32'h0000_0A00, 32'hCAFE_BABE, SIZE_WORD);
-        push_read (32'h0000_0A00, SIZE_WORD);
+        /* Data for the INCR4 read burst */
+        for (i = 0; i < 4; i++) begin
+            push_write(32'h0000_1000 + 4 * i, 32'h0101_0100 + i, SIZE_WORD);
+        end
 
-        /* Collision 2: read right after the write, followed by an access
-           to the other slave */
-        push_write(32'h0000_0A04, 32'h1234_5678, SIZE_WORD);
-        push_read (32'h0000_0A04, SIZE_WORD);
-        push_read (32'h4000_0000, SIZE_WORD);
+        /* Data for the INCR8 read burst */
+        for (i = 0; i < 8; i++) begin
+            push_write(32'h0000_1100 + 4 * i, 32'hAA00_0000 + i, SIZE_WORD);
+        end
 
-        /* This slave still works after the wait cycles */
-        push_read (32'h0000_0A08, SIZE_WORD);
+        /* Data for the undefined length INCR read burst */
+        for (i = 0; i < 4; i++) begin
+            push_write(32'h0000_1200 + 4 * i, 32'hBB00_0000 + i, SIZE_WORD);
+        end
 
-        wait_done(6);
-        check_int("stall count", stall_count, 2);
-        check_int("max stall run", stall_run_max, 1);
-        check_int("other slave beats", other_done_count, 1);
+        push_burst_read(32'h0000_1000, 4, BURST_INCR4);
+        push_burst_read(32'h0000_1100, 8, BURST_INCR8);
+        push_burst_read(32'h0000_1200, 4, BURST_INCR);
+
+        wait_done(32);
+        check_int("stall count", stall_count, 0);
         repeat (4) @(posedge hclk);
 
         if (error_count == 0) begin
-            $display("==== TEST PASSED : tb_bram_top_collision_stall ====");
+            $display("==== TEST PASSED : tb_sram_model_top_burst_read ====");
         end else begin
-            $display("==== TEST FAILED : tb_bram_top_collision_stall, %0d ====",
+            $display("==== TEST FAILED : tb_sram_model_top_burst_read, %0d ====",
                      error_count);
         end
 

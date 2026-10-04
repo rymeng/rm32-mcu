@@ -28,6 +28,205 @@
   </cpu>
   <peripherals>
     <peripheral>
+      <name>FMC</name>
+      <baseAddress>0x40020000</baseAddress>
+      <description>Flash Memory Controller</description>
+      <groupName>FMC</groupName>
+      <headerStructName>FMC</headerStructName>
+      <size>0x000003FF</size>
+      <addressBlock>
+        <usage>registers</usage>
+        <offset>0x0</offset>
+        <size>0x000003FF</size>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>ACR</name>
+          <addressOffset>0x00000000</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>FMC Access Control Register</description>
+          <fields>
+            <field>
+              <name>LATENCY</name>
+              <msb>3</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>FMC ACR LATENCY [3:0] Bits: Access latency</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>KEYR</name>
+          <addressOffset>0x00000004</addressOffset>
+          <size>32</size>
+          <access>write-only</access>
+          <description>FMC Key Register</description>
+          <fields>
+            <field>
+              <name>KEY</name>
+              <msb>31</msb>
+              <lsb>0</lsb>
+              <access>write-only</access>
+              <description>FMC KEYR KEY [31:0] Bits: Unlock key</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>CR1</name>
+          <addressOffset>0x00000008</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>FMC Control Register 1</description>
+          <fields>
+            <field>
+              <name>LOCK</name>
+              <msb>16</msb>
+              <lsb>16</lsb>
+              <access>read-write</access>
+              <description>FMC CR1 LOCK Bit: Lock FMC</description>
+            </field>
+            <field>
+              <name>BEREN</name>
+              <msb>2</msb>
+              <lsb>2</lsb>
+              <access>read-write</access>
+              <description>FMC CR1 BEREN Bit: Enable / Disable bank erasing</description>
+            </field>
+            <field>
+              <name>SEREN</name>
+              <msb>1</msb>
+              <lsb>1</lsb>
+              <access>read-write</access>
+              <description>FMC CR1 SEREN Bit: Enable / Disable sector erasing</description>
+            </field>
+            <field>
+              <name>PGEN</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>FMC CR1 PGEN Bit: Enable / Disable programming</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name> CR2</name>
+          <addressOffset>0x0000000C</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>FMC Control Register 2</description>
+          <fields>
+            <field>
+              <name>START</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>FMC  CR2 START Bit: Start erasing</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>AR</name>
+          <addressOffset>0x00000040</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <description>FMC Address Register</description>
+          <fields>
+            <field>
+              <name>ADDR</name>
+              <msb>31</msb>
+              <lsb>0</lsb>
+              <access>read-write</access>
+              <description>FMC AR ADDR [31:0] Bits: Sector erasing address</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>SR</name>
+          <addressOffset>0x00000080</addressOffset>
+          <size>32</size>
+          <access>read-only</access>
+          <description>FMC Status Register</description>
+          <fields>
+            <field>
+              <name>PGBUFNF</name>
+              <msb>1</msb>
+              <lsb>1</lsb>
+              <access>read-only</access>
+              <description>FMC SR PGBUFNF Bit: Programming buf not full</description>
+            </field>
+            <field>
+              <name>BUSY</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-only</access>
+              <description>FMC SR BUSY Bit: FMC busy</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ISR</name>
+          <addressOffset>0x00000104</addressOffset>
+          <size>32</size>
+          <access>read-only</access>
+          <description>FMC Interrupt Status Register</description>
+          <fields>
+            <field>
+              <name>PGNALN</name>
+              <msb>2</msb>
+              <lsb>2</lsb>
+              <access>read-only</access>
+              <description>FMC ISR PGNALN Bit: Programming address not aligned</description>
+            </field>
+            <field>
+              <name>PGERR</name>
+              <msb>1</msb>
+              <lsb>1</lsb>
+              <access>read-only</access>
+              <description>FMC ISR PGERR Bit: Programming page error</description>
+            </field>
+            <field>
+              <name>DONE</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>read-only</access>
+              <description>FMC ISR DONE Bit: FMC done</description>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ICR</name>
+          <addressOffset>0x00000108</addressOffset>
+          <size>32</size>
+          <access>write-only</access>
+          <description>FMC Interrupt Clear Register</description>
+          <fields>
+            <field>
+              <name>PGNALN</name>
+              <msb>2</msb>
+              <lsb>2</lsb>
+              <access>write-only</access>
+              <description>FMC ICR PGNALN Bit: Clear ISR.PGNALN</description>
+            </field>
+            <field>
+              <name>PGERR</name>
+              <msb>1</msb>
+              <lsb>1</lsb>
+              <access>write-only</access>
+              <description>FMC ICR PGERR Bit: Clear ISR.PGERR</description>
+            </field>
+            <field>
+              <name>DONE</name>
+              <msb>0</msb>
+              <lsb>0</lsb>
+              <access>write-only</access>
+              <description>FMC ICR DONE Bit: Clear ISR.DONE</description>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>GPIOA</name>
       <baseAddress>0x40080000</baseAddress>
       <description>General Purpose Input Output A</description>
